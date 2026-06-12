@@ -95,6 +95,7 @@ export const HUB_TILES = [
   { id: "merchant-offers", label: "Merchant Offers", description: "Activate partner cashback deals", icon: "OF", mode: "merchant-offers" },
   { id: "travel", label: "Travel Hub", description: "Register travel plans on your card", icon: "TR", mode: "travel-notice" },
   { id: "card-controls", label: "Card Controls", description: "Limits, wallet and card settings", icon: "CL", mode: "credit-limit" },
+  { id: "wallet", label: "Wallet", description: "Add your card to a digital wallet", icon: "WL", mode: "wallet" },
 ];
 
 const SPEND_CATEGORIES = [

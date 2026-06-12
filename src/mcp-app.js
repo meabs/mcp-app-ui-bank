@@ -9,9 +9,16 @@ import {
   createApplicationJourney,
   createDeliveryTracker,
   estimateBalanceTransfer,
+  getCreditLimitOffer,
   getCategoryMerchants,
   getCompareRecommendation,
   getCardComparison,
+  getDemoPayload,
+  getHubPayload,
+  getMerchantOffers,
+  getSpendInsights,
+  getTravelNoticeForm,
+  getWalletProvisioning,
   restoreApplicationDraft,
   runEligibilityCheck,
   serializeApplicationDraft,
@@ -28,8 +35,9 @@ const DEFAULT_DEMO_CARD_ID = "blackwell-rewards";
 // ─── State ───────────────────────────────────────────────────────────────────
 
 const state = {
-  mode: "full",
+  mode: "hub",
   entryMode: null,
+  productTab: "cards",
   journeyPhase: null,
   showJourney: false,
   recommendations: null,
@@ -69,6 +77,9 @@ const demoToolbar = document.getElementById("demo-toolbar");
 const modelContextPanel = document.getElementById("model-context-panel");
 const modelContextCustomer = document.getElementById("model-context-customer");
 const modelContextModel = document.getElementById("model-context-model");
+const contextViewLabel = document.getElementById("context-view-label");
+const contextCustomer = document.getElementById("context-customer");
+const contextCard = document.getElementById("context-card");
 
 // ─── App instance ─────────────────────────────────────────────────────────────
 
@@ -138,12 +149,20 @@ function initFeatures() {
       calculateRewards,
       createDeliveryTracker,
       estimateBalanceTransfer,
+      getCreditLimitOffer,
       getCategoryMerchants,
       getCompareRecommendation,
       getCardComparison,
+      getDemoPayload,
+      getHubPayload,
+      getMerchantOffers,
+      getSpendInsights,
+      getTravelNoticeForm,
+      getWalletProvisioning,
       restoreApplicationDraft,
       serializeApplicationDraft,
     },
+    handleToolResult,
   });
 }
 
@@ -186,6 +205,10 @@ const VIEW_BY_MODE = {
 };
 
 async function callServerTool(name, args = {}) {
+  if (!IS_EMBEDDED) {
+    console.warn(`Tool ${name} unavailable in standalone preview; using local demo data.`);
+    return null;
+  }
   try {
     const result = await app.callServerTool({ name, arguments: args });
     handleToolResult(result);
@@ -253,6 +276,84 @@ function showViewForMode(mode) {
   showView(VIEW_BY_MODE[mode] ?? "view-full");
 }
 
+function getSelectedCard() {
+  const cards = state.recommendations?.cards ?? [];
+  return cards.find((card) => card.id === state.selectedCardId) ?? cards[0] ?? null;
+}
+
+function viewLabelForMode(mode) {
+  const labels = {
+    full: "Products",
+    "card-detail": "Product Details",
+    journey: state.journeyPhase === "application" ? "Application" : "Eligibility",
+    eligibility: "Eligibility",
+    application: "Application",
+    compare: "Compare Cards",
+    calculator: "Rewards Calculator",
+    "balance-transfer": "Balance Transfer",
+    hub: "Card Hub",
+    "spend-insights": "Spend Insights",
+    "merchant-offers": "Offers",
+    "travel-notice": "Travel",
+    "credit-limit": "Credit Limit",
+    wallet: "Wallet",
+  };
+  return labels[mode] ?? "Card Services";
+}
+
+function renderContextHeader() {
+  const card = getSelectedCard();
+  if (contextViewLabel) contextViewLabel.textContent = viewLabelForMode(state.mode);
+  if (contextCustomer) {
+    contextCustomer.textContent = state.profile?.firstName
+      ? `${state.profile.firstName} • customer since ${state.profile.customerSince}`
+      : "Alex Morgan";
+  }
+  if (contextCard) {
+    const name = card?.name?.replace(/^Blackwell\s+/i, "") ?? state.wallet?.cardName ?? "Rewards Card";
+    const lastFour = state.wallet?.lastFour ?? state.travelNotice?.cardLastFour ?? "4821";
+    contextCard.textContent = `${name} • ${lastFour}`;
+  }
+}
+
+function setProductTab(tab) {
+  const nextTab = ["cards", "compare", "eligibility"].includes(tab) ? tab : "cards";
+  state.productTab = nextTab;
+  document.querySelectorAll("[data-product-tab]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.productTab === nextTab);
+    button.setAttribute("aria-pressed", button.dataset.productTab === nextTab ? "true" : "false");
+  });
+
+  const layout = document.getElementById("product-layout");
+  layout?.classList.toggle("product-tab-cards", nextTab === "cards");
+  layout?.classList.toggle("product-tab-compare", nextTab === "compare");
+  layout?.classList.toggle("product-tab-eligibility", nextTab === "eligibility");
+
+  const compareSection = document.getElementById("full-compare-section");
+  compareSection?.classList.toggle("hidden", nextTab !== "compare");
+
+  if (nextTab === "compare") {
+    if (state.compareIds.length < 2) {
+      state.compareIds = (state.recommendations?.cards ?? []).map((card) => card.id);
+    }
+    const need = state.recommendations?.filters?.need ?? "everyday-spend";
+    state.comparison = getCardComparison(state.compareIds, need);
+    state.comparison.need = need;
+    state.comparison.recommendedCardId ??= getCompareRecommendation?.(state.compareIds, need);
+    features?.renderComparison("full-compare-body");
+  }
+
+  const journeySection = document.getElementById("full-journey-section");
+  if (nextTab === "eligibility") {
+    state.showJourney = true;
+    state.journeyPhase ??= state.eligibility ? "eligibility-result" : "eligibility-form";
+    journeySection?.classList.remove("hidden");
+    renderJourneyPhase();
+  } else if (!state.showJourney) {
+    journeySection?.classList.add("hidden");
+  }
+}
+
 async function resetDemoSession(destination = "hub") {
   try {
     localStorage.removeItem(DRAFT_STORAGE_KEY);
@@ -285,6 +386,7 @@ async function resetDemoSession(destination = "hub") {
     state.entryMode = "full";
     const result = await callServerTool("blackwell-browse-cards");
     if (!result) {
+      handleToolResult({ structuredContent: getDemoPayload({ existingCustomer: true }) });
       state.mode = "full";
       showViewForMode("full");
       render();
@@ -295,6 +397,7 @@ async function resetDemoSession(destination = "hub") {
   state.entryMode = "hub";
   const result = await callServerTool("blackwell-open-hub");
   if (!result) {
+    handleToolResult({ structuredContent: getHubPayload() });
     state.mode = "hub";
     showViewForMode("hub");
     render();
@@ -305,6 +408,7 @@ async function runDemoToolbarAction(action) {
   if (action === "hub") {
     const result = await callServerTool("blackwell-open-hub");
     if (!result) {
+      handleToolResult({ structuredContent: getHubPayload() });
       state.mode = "hub";
       state.entryMode = "hub";
       showViewForMode("hub");
@@ -316,6 +420,7 @@ async function runDemoToolbarAction(action) {
   if (action === "products") {
     const result = await callServerTool("blackwell-browse-cards");
     if (!result) {
+      handleToolResult({ structuredContent: getDemoPayload({ existingCustomer: true }) });
       state.mode = "full";
       state.entryMode = "full";
       showViewForMode("full");
@@ -327,6 +432,7 @@ async function runDemoToolbarAction(action) {
   if (action === "spend") {
     const result = await callServerTool("blackwell-spend-insights");
     if (!result) {
+      handleToolResult({ structuredContent: getSpendInsights() });
       state.mode = "spend-insights";
       showViewForMode("spend-insights");
       render();
@@ -373,6 +479,17 @@ function wireDemoToolbar() {
     const nextMode = !demoModeEnabled;
     setDemoMode(nextMode);
     writeDemoModeToStorage(nextMode);
+  });
+}
+
+function wireProductTabs() {
+  document.querySelectorAll("[data-product-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (state.mode !== "full") return;
+      setProductTab(button.dataset.productTab);
+      renderContextHeader();
+      notifyHostSize();
+    });
   });
 }
 
@@ -577,12 +694,14 @@ function handleToolResult(result) {
     state.underwritingStatus = null;
     state.underwritingDecision = null;
     state.activeSpendCategory = null;
+    state.productTab = "cards";
     features?.tryResumeDraft();
   }
 
   if (payload.kind === "card-recommendations") {
     state.recommendations = payload;
     state.selectedCardId = payload.selectedCardId ?? payload.cards?.[0]?.id ?? state.selectedCardId;
+    state.productTab = "cards";
   }
 
   if (payload.kind === "card-comparison") {
@@ -667,7 +786,8 @@ function handleToolResult(result) {
     state.mode = incomingMode === "eligibility" || incomingMode === "application"
       ? "journey"
       : incomingMode;
-    if (!state.entryMode) state.entryMode = state.mode;
+    if (state.mode === "full") state.entryMode = "full";
+    else if (!state.entryMode) state.entryMode = state.mode;
   }
 
   showViewForMode(state.mode);
@@ -678,14 +798,19 @@ function handleToolResult(result) {
 // ─── Render orchestrator ──────────────────────────────────────────────────────
 
 function render() {
+  renderContextHeader();
   renderPersonalisationBanner();
   switch (state.mode) {
     case "full":
+      setProductTab(state.productTab);
       renderCards();
       renderCardDetail("full-card-detail-body");
+      if (state.productTab === "compare") features?.renderComparison("full-compare-body");
       if (state.showJourney && state.journeyPhase) {
         document.getElementById("full-journey-section")?.classList.remove("hidden");
         renderJourneyPhase();
+      } else if (state.productTab !== "eligibility") {
+        document.getElementById("full-journey-section")?.classList.add("hidden");
       }
       break;
     case "card-detail":
@@ -763,7 +888,15 @@ function toggleCompare(cardId) {
 
 function renderCards() {
   const container = document.getElementById("card-list-items");
-  if (!container || !state.recommendations) return;
+  if (!container) return;
+  if (!state.recommendations?.cards?.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <strong>No cards to show</strong>
+        <p>Ask for card recommendations or open the Card Hub to start again.</p>
+      </div>`;
+    return;
+  }
 
   const headline = document.getElementById("card-list-headline");
   if (headline) headline.textContent = state.recommendations.headline ?? "Recommended for you";
@@ -834,11 +967,26 @@ function renderCards() {
 
 function renderCardDetail(containerId) {
   const container = document.getElementById(containerId);
-  if (!container || !state.recommendations) return;
+  if (!container) return;
+  if (!state.recommendations?.cards?.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <strong>Select a card</strong>
+        <p>Card details will appear once recommendations are available.</p>
+      </div>`;
+    return;
+  }
 
   const cards = state.recommendations.cards ?? [];
   const card  = cards.find((c) => c.id === state.selectedCardId) ?? cards[0];
-  if (!card) return;
+  if (!card) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <strong>Card unavailable</strong>
+        <p>Choose another card or refresh recommendations.</p>
+      </div>`;
+    return;
+  }
 
   container.innerHTML = `
     <h2 class="card-detail-name">${card.name}</h2>
@@ -1150,6 +1298,7 @@ async function bootstrapFromFallback() {
       if (!res.ok) continue;
       const payload = await res.json();
       if (handleToolResult({ structuredContent: payload })) {
+        handleToolResult({ structuredContent: getHubPayload() });
         bootstrapped = true;
         return true;
       }
@@ -1158,6 +1307,12 @@ async function bootstrapFromFallback() {
     }
   }
   return false;
+}
+
+function bootstrapLocalDemo() {
+  handleToolResult({ structuredContent: getDemoPayload({ existingCustomer: true }) });
+  handleToolResult({ structuredContent: getHubPayload() });
+  bootstrapped = true;
 }
 
 app.onhostcontextchanged = (ctx) => {
@@ -1174,8 +1329,14 @@ app.onteardown = async () => ({});
 async function startApp() {
   initFeatures();
   features?.wireGlobalNav();
+  wireProductTabs();
   const ctx = app.getHostContext();
   if (ctx) applyHostContext(ctx);
+
+  if (!IS_EMBEDDED) {
+    bootstrapLocalDemo();
+    return;
+  }
 
   // ChatGPT may fire ontoolresult before structuredContent is populated — retry.
   for (const delay of [400, 1200, 2500]) {

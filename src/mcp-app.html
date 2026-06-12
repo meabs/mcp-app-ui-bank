@@ -8,6 +8,19 @@
   </head>
   <body>
     <main id="app-root" class="app-shell">
+      <header class="app-context-bar" aria-label="Current card context">
+        <div class="app-context-brand">
+          <div class="brand-logo" aria-hidden="true">B</div>
+          <div>
+            <strong>Blackwell Bank</strong>
+            <span id="context-view-label">Card Hub</span>
+          </div>
+        </div>
+        <div class="app-context-meta">
+          <span id="context-customer">Alex Morgan</span>
+          <span id="context-card">Rewards Card • 4821</span>
+        </div>
+      </header>
 
       <div id="view-loading" class="view view-loading">
         <div class="loading-logo">B</div>
@@ -16,7 +29,12 @@
 
       <div id="view-full" class="view hidden">
         <div id="personalisation-banner" class="personalisation-banner hidden"></div>
-        <section class="layout-primary">
+        <nav class="mobile-product-tabs" aria-label="Product sections">
+          <button type="button" data-product-tab="cards" class="active">Cards</button>
+          <button type="button" data-product-tab="compare">Compare</button>
+          <button type="button" data-product-tab="eligibility">Eligibility</button>
+        </nav>
+        <section class="layout-primary product-tab-cards" id="product-layout">
           <aside class="card-list-panel">
             <div class="card-list-header">
               <h2 id="card-list-headline">Recommended for you</h2>
@@ -41,6 +59,16 @@
           </article>
         </section>
 
+        <section id="full-compare-section" class="mobile-product-section hidden">
+          <article class="card-detail-panel fragment-panel">
+            <header class="card-detail-header">
+              <div class="brand-logo" aria-hidden="true">B</div>
+              <p class="brand-name">Compare Cards</p>
+            </header>
+            <div class="card-detail-body" id="full-compare-body"></div>
+          </article>
+        </section>
+
         <section id="full-journey-section" class="hidden">
           <article class="eligibility-panel journey-panel">
             <header class="panel-header">
@@ -60,7 +88,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Blackwell Bank</p>
-            <span class="back-link">← All cards</span>
+            <span class="back-link" data-nav="full" role="button" tabindex="0">Back to Products</span>
           </header>
           <div class="card-detail-body" id="fragment-card-detail-body"></div>
           <footer class="card-detail-footer">Secure &bull; Information you share is protected</footer>
@@ -72,7 +100,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Blackwell Bank</p>
-            <span class="back-link" id="journey-back" role="button" tabindex="0">← Back</span>
+            <span class="back-link" id="journey-back" role="button" tabindex="0">Back to Previous Step</span>
           </header>
           <div class="panel-body">
             <p id="fragment-journey-title" class="journey-panel-title">Eligibility</p>
@@ -88,7 +116,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Compare cards</p>
-            <span class="back-link" data-nav="full" role="button" tabindex="0">← Back</span>
+            <span class="back-link" data-nav="full" role="button" tabindex="0">Back to Products</span>
           </header>
           <div class="card-detail-body" id="compare-body"></div>
         </article>
@@ -99,7 +127,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Rewards calculator</p>
-            <span class="back-link" data-nav="full" role="button" tabindex="0">← Back</span>
+            <span class="back-link" data-nav="full" role="button" tabindex="0">Back to Products</span>
           </header>
           <div class="card-detail-body" id="calculator-body"></div>
         </article>
@@ -110,7 +138,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Balance transfer</p>
-            <span class="back-link" data-nav="full" role="button" tabindex="0">← Back</span>
+            <span class="back-link" data-nav="full" role="button" tabindex="0">Back to Products</span>
           </header>
           <div class="card-detail-body" id="balance-transfer-body"></div>
         </article>
@@ -131,7 +159,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Spend insights</p>
-            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">Back to Card Hub</span>
           </header>
           <div class="card-detail-body" id="spend-insights-body"></div>
         </article>
@@ -142,7 +170,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Merchant offers</p>
-            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">Back to Card Hub</span>
           </header>
           <div class="card-detail-body" id="merchant-offers-body"></div>
         </article>
@@ -153,7 +181,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Travel notice</p>
-            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">Back to Card Hub</span>
           </header>
           <div class="card-detail-body" id="travel-notice-body"></div>
         </article>
@@ -164,7 +192,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Credit limit</p>
-            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">Back to Card Hub</span>
           </header>
           <div class="card-detail-body" id="credit-limit-body"></div>
         </article>
@@ -175,7 +203,7 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Digital wallet</p>
-            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">Back to Card Hub</span>
           </header>
           <div class="card-detail-body" id="wallet-body"></div>
         </article>
@@ -209,9 +237,16 @@
     </nav>
 
     <footer class="regulatory-footer">
-      Blackwell Bank is a trading name of Blackwell Bank plc. Registered in England and Wales (12345678).
-      Registered Office: 100 Queen Street, London, EC4N 1HQ. Authorised by the Prudential Regulation
-      Authority and regulated by the Financial Conduct Authority and the Prudential Regulation Authority.
+      <span>Demo only. Credit subject to status. Terms apply.</span>
+      <details class="disclosure-details">
+        <summary>Disclosures</summary>
+        <p>
+          Blackwell Bank is a trading name of Blackwell Bank plc. Registered in England and Wales
+          (12345678). Registered Office: 100 Queen Street, London, EC4N 1HQ. Authorised by the
+          Prudential Regulation Authority and regulated by the Financial Conduct Authority and the
+          Prudential Regulation Authority.
+        </p>
+      </details>
     </footer>
 
     <script type="module" src="/src/mcp-app.js"></script>

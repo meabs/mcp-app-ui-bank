@@ -14,12 +14,20 @@ export function createFeatureViews(ctx) {
     calculateRewards,
     createDeliveryTracker,
     estimateBalanceTransfer,
+    getCreditLimitOffer,
     getCategoryMerchants,
     getCompareRecommendation,
     getCardComparison,
+    getDemoPayload,
+    getHubPayload,
+    getMerchantOffers,
+    getSpendInsights,
+    getTravelNoticeForm,
+    getWalletProvisioning,
     restoreApplicationDraft,
     serializeApplicationDraft,
   } = ctx.demoData;
+  const { handleToolResult } = ctx;
   let offerFeedbackTimer = null;
 
   function extractPayload(result) {
@@ -32,6 +40,38 @@ export function createFeatureViews(ctx) {
 
   function saveDraftToStorage(draft) {
     try { localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft)); } catch { /* sandbox */ }
+  }
+
+  function renderPanelState(el, title, message, actionLabel = null) {
+    if (!el) return;
+    el.innerHTML = `
+      <div class="empty-state">
+        <strong>${title}</strong>
+        <p>${message}</p>
+        ${actionLabel ? `<button type="button" class="btn-secondary" data-state-action>${actionLabel}</button>` : ""}
+      </div>`;
+  }
+
+  function needLabel(need) {
+    const labels = {
+      travel: "travel",
+      "everyday-spend": "everyday",
+      "credit-building": "credit building",
+    };
+    return labels[need] ?? "everyday";
+  }
+
+  function localHubPayload(hubId) {
+    const map = {
+      products: getDemoPayload?.({ existingCustomer: true }),
+      "spend-insights": getSpendInsights?.(),
+      "merchant-offers": getMerchantOffers?.(),
+      travel: getTravelNoticeForm?.(),
+      "card-controls": getCreditLimitOffer?.(true),
+      wallet: getWalletProvisioning?.(),
+      hub: getHubPayload?.(),
+    };
+    return map[hubId] ?? null;
   }
 
   function loadDraftFromStorage() {
@@ -318,14 +358,43 @@ export function createFeatureViews(ctx) {
     });
   }
 
-  function renderComparison() {
-    const el = document.getElementById("compare-body");
+  function renderComparison(targetId = "compare-body") {
+    const el = document.getElementById(targetId);
     const data = state.comparison ?? getCardComparison(state.compareIds);
-    if (!el || !data.cards?.length) return;
+    if (!el) return;
+    if (!data.cards?.length) {
+      renderPanelState(el, "Nothing to compare yet", "Select at least two cards, or open Products to compare all available cards.", "Open Products");
+      el.querySelector("[data-state-action]")?.addEventListener("click", () => {
+        state.mode = "full";
+        state.productTab = "cards";
+        showViewForMode("full");
+        ctx.render();
+      });
+      notifyHostSize();
+      return;
+    }
     const inferredNeed = state.comparison?.need ?? state.recommendations?.filters?.need ?? "everyday-spend";
     const recommendedCardId = data.recommendedCardId
       ?? getCompareRecommendation?.(data.cardIds ?? data.cards.map((card) => card.id), inferredNeed)
       ?? null;
+    const recommendedCard = data.cards.find((card) => card.id === recommendedCardId) ?? data.cards[0];
+    const summaryCards = [
+      {
+        label: "Best for travel",
+        card: data.cards.find((card) => card.loungeAccess) ?? data.cards[0],
+        detail: "Lounge access and travel rewards",
+      },
+      {
+        label: "Best everyday",
+        card: data.cards.slice().sort((a, b) => (b.cashbackRate ?? 0) - (a.cashbackRate ?? 0))[0] ?? data.cards[0],
+        detail: "Cashback and daily spend value",
+      },
+      {
+        label: "Credit building",
+        card: data.cards.find((card) => card.minIncome <= 18000) ?? data.cards[data.cards.length - 1],
+        detail: "Lower entry criteria",
+      },
+    ];
     const headers = data.cards.map((c) => `
       <th class="${c.id === recommendedCardId ? "compare-col-best" : ""}">
         ${c.name}
@@ -337,7 +406,24 @@ export function createFeatureViews(ctx) {
         <th>${row.label}</th>
         ${row.values.map((v, index) => `<td class="${data.cards[index].id === recommendedCardId ? "compare-col-best" : ""}">${v}</td>`).join("")}
       </tr>`).join("");
-    el.innerHTML = `<div class="compare-table-wrap" tabindex="0" aria-label="Card comparison table"><table class="compare-table"><thead><tr><th>Feature</th>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    el.innerHTML = `
+      <section class="compare-summary-strip" aria-label="Comparison summary">
+        <div class="compare-summary-main">
+          <span>Recommended for ${needLabel(inferredNeed)}</span>
+          <strong>${recommendedCard?.name ?? "Best matched card"}</strong>
+        </div>
+        <div class="compare-summary-grid">
+          ${summaryCards.map((item) => `
+            <div class="compare-summary-card ${item.card?.id === recommendedCardId ? "active" : ""}">
+              <span>${item.label}</span>
+              <strong>${item.card?.name ?? "Unavailable"}</strong>
+              <p>${item.detail}</p>
+            </div>`).join("")}
+        </div>
+      </section>
+      <div class="compare-table-wrap" tabindex="0" aria-label="Card comparison table">
+        <table class="compare-table"><thead><tr><th>Feature</th>${headers}</tr></thead><tbody>${rows}</tbody></table>
+      </div>`;
     notifyHostSize();
   }
 
@@ -345,6 +431,11 @@ export function createFeatureViews(ctx) {
     const el = document.getElementById("calculator-body");
     const calc = state.calculator ?? calculateRewards(state.selectedCardId ?? "blackwell-rewards", 1500);
     if (!el) return;
+    if (!calc) {
+      renderPanelState(el, "Calculator unavailable", "Choose a card before estimating rewards.");
+      notifyHostSize();
+      return;
+    }
     el.innerHTML = `
       <p class="eligibility-subtitle">${calc.cardName}</p>
       <div class="slider-field">
@@ -369,6 +460,11 @@ export function createFeatureViews(ctx) {
     const el = document.getElementById("balance-transfer-body");
     const bt = state.balanceTransfer ?? estimateBalanceTransfer({});
     if (!el) return;
+    if (!bt) {
+      renderPanelState(el, "Estimator unavailable", "Choose a card before estimating a balance transfer.");
+      notifyHostSize();
+      return;
+    }
     el.innerHTML = `
       <p class="eligibility-subtitle">${bt.cardName} — ${bt.headline}</p>
       <form class="app-form" id="bt-form">
@@ -396,7 +492,12 @@ export function createFeatureViews(ctx) {
 
   function renderHub() {
     const el = document.getElementById("hub-body");
-    if (!el || !state.hub?.tiles) return;
+    if (!el) return;
+    if (!state.hub?.tiles?.length) {
+      renderPanelState(el, "Card Hub is loading", "Your products, spend, offers, travel, wallet and controls will appear here.");
+      notifyHostSize();
+      return;
+    }
     el.innerHTML = `
       <h2 style="margin:0 0 12px;font-size:1rem;">${state.hub.headline}</h2>
       ${state.hub.subtitle ? `<p class="hub-subtitle">${state.hub.subtitle}</p>` : ""}
@@ -408,7 +509,12 @@ export function createFeatureViews(ctx) {
         </button>`).join("")}</div>`;
     el.innerHTML = el.innerHTML.replace(/motion\.div>/, "div>");
     el.querySelectorAll(".hub-tile").forEach((tile) => {
-      tile.addEventListener("click", () => callServerTool("blackwell-navigate-hub", { hubId: tile.dataset.hubId }));
+      tile.addEventListener("click", async () => {
+        const result = await callServerTool("blackwell-navigate-hub", { hubId: tile.dataset.hubId });
+        if (result) return;
+        const payload = localHubPayload(tile.dataset.hubId);
+        if (payload) handleToolResult?.({ structuredContent: payload });
+      });
     });
     notifyHostSize();
   }
@@ -416,7 +522,12 @@ export function createFeatureViews(ctx) {
   function renderSpendInsights() {
     const el = document.getElementById("spend-insights-body");
     const data = state.spendInsights;
-    if (!el || !data) return;
+    if (!el) return;
+    if (!data?.categories?.length) {
+      renderPanelState(el, "No spend insights yet", "Recent card activity will appear here after transactions are available.");
+      notifyHostSize();
+      return;
+    }
     const gradient = data.categories.map((c, i, arr) => {
       const start = arr.slice(0, i).reduce((s, x) => s + x.pct, 0);
       return `${c.color} ${start}% ${start + c.pct}%`;
@@ -467,7 +578,12 @@ export function createFeatureViews(ctx) {
   function renderMerchantOffers() {
     const el = document.getElementById("merchant-offers-body");
     const data = state.merchantOffers;
-    if (!el || !data?.offers) return;
+    if (!el) return;
+    if (!data?.offers?.length) {
+      renderPanelState(el, "No offers available", "Personalised merchant offers will appear here when available.");
+      notifyHostSize();
+      return;
+    }
     const savings = data.estimatedOfferSavings ?? 0;
     const logoBubbles = data.offers.slice(0, 4).map((offer) => {
       const initials = offer.partner
@@ -520,7 +636,12 @@ export function createFeatureViews(ctx) {
   function renderTravelNotice() {
     const el = document.getElementById("travel-notice-body");
     const data = state.travelNotice;
-    if (!el || !data) return;
+    if (!el) return;
+    if (!data) {
+      renderPanelState(el, "Travel notice unavailable", "Open Card Hub again to start a travel notice.");
+      notifyHostSize();
+      return;
+    }
     if (data.reference) {
       const countries = data.countries?.length ? data.countries.join(", ") : "No countries selected";
       el.innerHTML = `
@@ -591,7 +712,12 @@ export function createFeatureViews(ctx) {
   function renderCreditLimit() {
     const el = document.getElementById("credit-limit-body");
     const data = state.creditLimit;
-    if (!el || !data) return;
+    if (!el) return;
+    if (!data) {
+      renderPanelState(el, "No limit offer", "We'll show eligible credit limit controls here.");
+      notifyHostSize();
+      return;
+    }
     const currentLimitAmount = Number(data.currentLimitAmount ?? 3500);
     const newLimitAmount = Number(data.newLimitAmount ?? 4000);
     const ratio = Math.max(0, Math.min(100, (currentLimitAmount / newLimitAmount) * 100));
@@ -618,7 +744,12 @@ export function createFeatureViews(ctx) {
   function renderWallet() {
     const el = document.getElementById("wallet-body");
     const data = state.wallet;
-    if (!el || !data) return;
+    if (!el) return;
+    if (!data) {
+      renderPanelState(el, "Wallet not ready", "Choose a card before adding it to a digital wallet.");
+      notifyHostSize();
+      return;
+    }
     if (data.status === "provisioned") {
       el.innerHTML = `<div class="wallet-success"><strong>✓ ${data.message}</strong></div>`;
       el.innerHTML = el.innerHTML.replace(/motion\.div>/, "div>");
@@ -656,7 +787,12 @@ export function createFeatureViews(ctx) {
     document.querySelectorAll(".back-link[data-nav]").forEach((link) => {
       link.addEventListener("click", () => {
         const target = link.dataset.nav;
+        if (target === "hub" && !state.hub?.tiles?.length) {
+          state.hub = getHubPayload?.() ?? state.hub;
+        }
         state.mode = target === "hub" ? "hub" : "full";
+        if (state.mode === "full") state.entryMode = "full";
+        if (state.mode === "hub") state.entryMode = "hub";
         showViewForMode(state.mode);
         ctx.render();
       });
