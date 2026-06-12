@@ -417,17 +417,19 @@ function setJourneyTitle(label) {
   if (el) el.textContent = label;
 }
 
-function focusJourneyContent(containerId) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
+function settleJourneyLayout(containerId) {
+  if (!document.getElementById(containerId)) return;
   requestAnimationFrame(() => {
-    const scrollTarget = container.closest("#full-journey-section, #view-journey") ?? container;
-    scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
-    const heading = container.querySelector("h2, h3");
-    if (heading) {
-      heading.setAttribute("tabindex", "-1");
-      heading.focus({ preventScroll: true });
-    }
+    notifyHostSize();
+  });
+}
+
+function preserveViewportPosition(update) {
+  const x = window.scrollX;
+  const y = window.scrollY;
+  update();
+  requestAnimationFrame(() => {
+    window.scrollTo(x, y);
     notifyHostSize();
   });
 }
@@ -939,8 +941,8 @@ function renderEligibilityForm(containerId) {
     });
     state.eligibility = payload;
     state.journeyPhase = "eligibility-result";
-    renderEligibilityResult(containerId);
-    focusJourneyContent(containerId);
+    preserveViewportPosition(() => renderEligibilityResult(containerId));
+    settleJourneyLayout(containerId);
     pushModelContext("eligibility", payload);
   });
 }
@@ -1021,11 +1023,11 @@ function renderEligibilityResult(containerId) {
     state.verificationIdUploaded = false;
     state.verificationSelfieUploaded = false;
     state.journeyPhase = "application";
-    renderJourneyPhase();
-    focusJourneyContent(containerId);
+    preserveViewportPosition(() => renderJourneyPhase());
+    settleJourneyLayout(containerId);
   });
 
-  focusJourneyContent(containerId);
+  settleJourneyLayout(containerId);
 
   container.querySelector("[data-action='check-different']")?.addEventListener("click", () => {
     state.eligibility = null;
