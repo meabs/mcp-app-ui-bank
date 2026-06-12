@@ -15,15 +15,17 @@
       </div>
 
       <div id="view-full" class="view hidden">
+        <div id="personalisation-banner" class="personalisation-banner hidden"></div>
         <section class="layout-primary">
           <aside class="card-list-panel">
             <div class="card-list-header">
-              <h2>Recommended for you</h2>
+              <h2 id="card-list-headline">Recommended for you</h2>
+              <p id="need-summary" class="need-summary hidden"></p>
             </div>
             <div id="card-list-items"></div>
             <div class="card-list-footer">
-              <button class="btn-compare" id="compare-btn">
-                Compare all cards <span aria-hidden="true">→</span>
+              <button class="btn-compare" id="compare-btn" type="button">
+                Compare selected <span id="compare-count" aria-hidden="true">(0)</span> <span aria-hidden="true">→</span>
               </button>
             </div>
           </aside>
@@ -32,10 +34,10 @@
             <header class="card-detail-header">
               <div class="brand-logo" aria-hidden="true">B</div>
               <p class="brand-name">Blackwell Bank</p>
-              <button class="fullscreen-cta" id="expand-btn" aria-label="Expand to fullscreen">⤢</button>
+              <button class="fullscreen-cta" id="expand-btn" type="button" aria-label="Expand to fullscreen">⤢</button>
             </header>
             <div class="card-detail-body" id="full-card-detail-body"></div>
-            <footer class="card-detail-footer">🔒 Secure &bull; Information you share is protected</footer>
+            <footer class="card-detail-footer">Secure &bull; Information you share is protected</footer>
           </article>
         </section>
 
@@ -61,7 +63,7 @@
             <span class="back-link">← All cards</span>
           </header>
           <div class="card-detail-body" id="fragment-card-detail-body"></div>
-          <footer class="card-detail-footer">🔒 Secure &bull; Information you share is protected</footer>
+          <footer class="card-detail-footer">Secure &bull; Information you share is protected</footer>
         </article>
       </div>
 
@@ -70,18 +72,141 @@
           <header class="card-detail-header">
             <div class="brand-logo" aria-hidden="true">B</div>
             <p class="brand-name">Blackwell Bank</p>
-            <span class="back-link" id="journey-back">← Back</span>
+            <span class="back-link" id="journey-back" role="button" tabindex="0">← Back</span>
           </header>
           <div class="panel-body">
             <p id="fragment-journey-title" class="journey-panel-title">Eligibility</p>
             <div id="fragment-journey-progress" class="step-progress hidden"></div>
             <div id="fragment-journey-body"></div>
           </div>
-          <footer class="card-detail-footer">🔒 Secure &bull; Information you share is protected</footer>
+          <footer class="card-detail-footer">Secure &bull; Information you share is protected</footer>
         </article>
       </div>
 
+      <div id="view-compare" class="view hidden">
+        <article class="card-detail-panel fragment-panel">
+          <header class="card-detail-header">
+            <div class="brand-logo" aria-hidden="true">B</div>
+            <p class="brand-name">Compare cards</p>
+            <span class="back-link" data-nav="full" role="button" tabindex="0">← Back</span>
+          </header>
+          <div class="card-detail-body" id="compare-body"></div>
+        </article>
+      </div>
+
+      <div id="view-calculator" class="view hidden">
+        <article class="card-detail-panel fragment-panel">
+          <header class="card-detail-header">
+            <div class="brand-logo" aria-hidden="true">B</div>
+            <p class="brand-name">Rewards calculator</p>
+            <span class="back-link" data-nav="full" role="button" tabindex="0">← Back</span>
+          </header>
+          <div class="card-detail-body" id="calculator-body"></div>
+        </article>
+      </div>
+
+      <div id="view-balance-transfer" class="view hidden">
+        <article class="card-detail-panel fragment-panel">
+          <header class="card-detail-header">
+            <div class="brand-logo" aria-hidden="true">B</div>
+            <p class="brand-name">Balance transfer</p>
+            <span class="back-link" data-nav="full" role="button" tabindex="0">← Back</span>
+          </header>
+          <div class="card-detail-body" id="balance-transfer-body"></div>
+        </article>
+      </div>
+
+      <div id="view-hub" class="view hidden">
+        <article class="card-detail-panel fragment-panel hub-panel">
+          <header class="card-detail-header">
+            <div class="brand-logo" aria-hidden="true">B</div>
+            <p class="brand-name">Card Hub</p>
+          </header>
+          <div class="card-detail-body" id="hub-body"></div>
+        </article>
+      </div>
+
+      <div id="view-spend-insights" class="view hidden">
+        <article class="card-detail-panel fragment-panel">
+          <header class="card-detail-header">
+            <div class="brand-logo" aria-hidden="true">B</div>
+            <p class="brand-name">Spend insights</p>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+          </header>
+          <div class="card-detail-body" id="spend-insights-body"></div>
+        </article>
+      </div>
+
+      <div id="view-merchant-offers" class="view hidden">
+        <article class="card-detail-panel fragment-panel">
+          <header class="card-detail-header">
+            <div class="brand-logo" aria-hidden="true">B</div>
+            <p class="brand-name">Merchant offers</p>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+          </header>
+          <div class="card-detail-body" id="merchant-offers-body"></div>
+        </article>
+      </div>
+
+      <div id="view-travel-notice" class="view hidden">
+        <article class="card-detail-panel fragment-panel">
+          <header class="card-detail-header">
+            <div class="brand-logo" aria-hidden="true">B</div>
+            <p class="brand-name">Travel notice</p>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+          </header>
+          <div class="card-detail-body" id="travel-notice-body"></div>
+        </article>
+      </div>
+
+      <div id="view-credit-limit" class="view hidden">
+        <article class="card-detail-panel fragment-panel">
+          <header class="card-detail-header">
+            <div class="brand-logo" aria-hidden="true">B</div>
+            <p class="brand-name">Credit limit</p>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+          </header>
+          <div class="card-detail-body" id="credit-limit-body"></div>
+        </article>
+      </div>
+
+      <div id="view-wallet" class="view hidden">
+        <article class="card-detail-panel fragment-panel">
+          <header class="card-detail-header">
+            <div class="brand-logo" aria-hidden="true">B</div>
+            <p class="brand-name">Digital wallet</p>
+            <span class="back-link" data-nav="hub" role="button" tabindex="0">← Hub</span>
+          </header>
+          <div class="card-detail-body" id="wallet-body"></div>
+        </article>
+      </div>
+
+      <aside id="model-context-panel" class="model-context-panel hidden" aria-live="polite">
+        <header class="model-context-header">
+          <strong>What the model sees</strong>
+          <span>Demo mode</span>
+        </header>
+        <div class="model-context-grid">
+          <section class="model-context-column">
+            <h3>Customer</h3>
+            <pre id="model-context-customer">No context pushed yet.</pre>
+          </section>
+          <section class="model-context-column">
+            <h3>Model</h3>
+            <pre id="model-context-model">No context pushed yet.</pre>
+          </section>
+        </div>
+      </aside>
+
     </main>
+
+    <nav id="demo-toolbar" class="demo-toolbar hidden" aria-label="Demo presenter toolbar">
+      <button type="button" class="demo-toolbar-btn" data-demo-action="hub">Hub</button>
+      <button type="button" class="demo-toolbar-btn" data-demo-action="products">Products</button>
+      <button type="button" class="demo-toolbar-btn" data-demo-action="spend">Spend</button>
+      <button type="button" class="demo-toolbar-btn" data-demo-action="apply">Apply</button>
+      <button type="button" class="demo-toolbar-btn demo-toolbar-btn-reset" data-demo-action="reset">Reset</button>
+    </nav>
 
     <footer class="regulatory-footer">
       Blackwell Bank is a trading name of Blackwell Bank plc. Registered in England and Wales (12345678).

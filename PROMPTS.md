@@ -1,171 +1,229 @@
-# Demo Prompts — Blackwell Bank MCP App
+# Blackwell Bank — Demo Runbook
 
-Use these prompts with any AI assistant connected to `https://garry-demo.meaburn.com/mcp` (HTTP) or configured for stdio (Claude Desktop). Prompts don't need to be exact — the model matches intent.
+Step-by-step scripts for presenting the MCP App demo in ChatGPT, Claude.ai, or Claude Desktop.
 
----
+**Server URL**
 
-## Scenario 1 — Full Sales UI
+- Cloud: `https://garry-demo.meaburn.com/mcp`
+- Local: `http://localhost:3001/mcp`
 
-Opens the complete panel: card catalogue on the left, card detail on the right, eligibility form and application stepper below.
-
-**Prompt to open:**
-> Show me Blackwell Bank credit cards
-
-**Variations:**
-> What credit cards does Blackwell Bank offer?
-
-> I'm looking for a new credit card — what does Blackwell Bank have?
-
-> Can you show me Blackwell Bank's card products?
-
-**What to do next in the UI:**
-- Click between cards in the left column to switch the detail view (card selection is an app-only tool — the model never sees it)
-- Fill in the eligibility form (credit band, income, employment status) and click **Check your eligibility**
-- Click **Continue to application** after the eligibility result appears
-- Work through the 5-step application form and submit — the model receives a notification when done
-- Click **⤢** (top-right of any panel) to expand to fullscreen
+Prompts do not need to be word-perfect — the model matches intent. Tool descriptions include **Follow-up:** hints so the assistant knows what to say after the panel renders.
 
 ---
 
-## Scenario 2 — Card Detail Fragment
+## 1. Before you present
 
-Opens a focused single-card spotlight with features, APR, and a CTA. No navigation chrome.
+Run through this once before the audience arrives.
 
-**Prompt:**
-> Tell me about the Blackwell Rewards Card
+| # | Do this | Why |
+|---|---------|-----|
+| 1 | `npm run build && npm run start:cloud` | Serves the latest UI over the public tunnel |
+| 2 | Reconnect the MCP integration in ChatGPT if tools look stale | You should see **24 tools**, not 6 |
+| 3 | Open a fresh chat connected to the server | Avoids leftover context from earlier runs |
+| 4 | Press **`Shift + D`** inside the panel | Turns on **presenter mode** (toolbar + inspector) |
+| 5 | Confirm the toolbar appears: **Hub · Products · Spend · Apply · Reset** | Quick jumps between demo sections |
+| 6 | Confirm **“What the model sees”** appears at the bottom of the panel | Used for redaction and LLM-sync beats |
 
-**Variations:**
-> What are the benefits of the Blackwell Rewards Card?
+**Presenter mode shortcuts**
 
-> Show me the Blackwell Cashback Card details
-
-> I want to see the features of the Blackwell Rewards Card
-
-> What's the APR on the Blackwell Cashback Card?
-
-**What to do next in the UI:**
-- Click **Check your eligibility** to trigger the eligibility tool from inside the fragment
-
----
-
-## Scenario 3 — Eligibility Widget Fragment
-
-Runs a soft eligibility check and shows the pre-qualification result — green success box, credit limit, and APR stats.
-
-**Prompt:**
-> Check if I'm eligible for the Blackwell Cashback Card
-
-**Variations:**
-> Am I likely to be approved for a Blackwell Bank card?
-
-> Can you do an eligibility check for the Rewards Card?
-
-> I want to see if I'd qualify for the Blackwell Cashback Card
-
-> Check my eligibility — I earn £35,000 and have good credit
-
-**What to do next in the UI:**
-- Click **Continue to application** to switch to the application stepper
+| Control | What it does |
+|---------|--------------|
+| `Shift + D` | Toggle presenter mode on/off |
+| `?demo=1` in URL | Same as above (basic-host / local testing) |
+| Toolbar **Reset** | Clear draft, journey, compare — back to Hub |
+| **⤢** button | Fullscreen (`requestDisplayMode`) |
 
 ---
 
-## Scenario 4 — Application Stepper Fragment
+## 2. What you are showing
 
-Launches the 5-step application form: Personal details → Address → Employment → Review → Decision.
+Three ideas, one story:
 
-**Prompt:**
-> Apply for the Blackwell Rewards Card
+1. **One MCP server, many UIs** — hub tiles, catalogue, compare, apply — not one giant form.
+2. **The iframe talks to the model** — some clicks push context silently; some stay invisible on purpose.
+3. **Banking redaction** — the customer sees exact numbers; the model sees buckets and tokens.
 
-**Variations:**
-> I'd like to apply for the Blackwell Cashback Card
-
-> Start a credit card application for the Rewards Card
-
-> Begin my application for a Blackwell Bank card
-
-> I want to apply — I'm an existing customer
-
-**What to do next in the UI:**
-- Fill in the form fields and click **Continue** to progress through steps
-- Click **Save and exit** to bail out without submitting
-- On the final step, submit — a confirmation screen with animated check appears and the model is notified
+Use the **inspector** (`Shift + D`) to prove each beat. Point at the **Customer** vs **Model** columns when eligibility runs — that is the clearest redaction moment.
 
 ---
 
-## Multi-turn conversation flows
+## 3. Main demo (~8 minutes)
 
-These show how to chain scenarios naturally in a single conversation.
+**Story:** Existing customer explores the hub → silent context sync → new customer applies for a card → chat replies with the decision.
 
-### Flow A — discovery to application
+Work through the steps in order. **Say** = prompt to the assistant. **Click** = action in the panel. **Ask** = follow-up prompt to prove the model learned something. **Narrate** = optional line to the audience.
 
-> Show me Blackwell Bank credit cards
+### Part A — Hub and invisible clicks (~2 min)
 
-*(Browse the catalogue, click cards to compare)*
+| Step | Say | Click | Ask | Narrate |
+|------|-----|-------|-----|---------|
+| 1 | *Open my Blackwell Card Hub* | — | — | “One server, composable domains — not a single sales form.” |
+| 2 | — | **Spend Insights** | — | “Spend breakdown with tokenised merchants.” |
+| 3 | — | **Groceries** in the chart legend | — | “Category drill-down never hits the model.” |
+| 4 | — | **← Hub** → **Merchant Offers** → **Activate** on Tesco | — | “Servicing event pushed silently — check the inspector.” |
+| 5 | — | — | *Which offers are active on my card?* | “It knew because the iframe told it — I didn’t retype anything.” |
 
-> Tell me more about the cashback option
+### Part B — Travel and personalisation (~1 min)
 
-> What would my eligibility look like with a £28,000 salary and fair credit?
+| Step | Say | Click | Ask | Narrate |
+|------|-----|-------|-----|---------|
+| 6 | — | **Hub** → **Travel** → submit (e.g. France, Spain) | — | “No card number in what the model sees.” |
+| 7 | — | — | *Where am I travelling — is my card protected?* | — |
+| 8 | — | Toolbar **Products** | — | — |
+| 9 | *I'm already a Blackwell customer — what cards can I get?* | — | — | “Simulated logged-in customer — Sarah banner + spend reason.” |
 
-> OK let's apply for the cashback card
+### Part C — Compare and eligibility (~2 min)
 
----
+| Step | Say | Click | Ask | Narrate |
+|------|-----|-------|-----|---------|
+| 10 | — | Tick **Compare** on two cards → **Compare selected** | — | “Best for you follows the spend need.” |
+| 11 | — | **Check your eligibility** → submit (good credit, £42k) | — | “Customer sees **£4,000**; model gets bucket **£3k–£5k** — point at the inspector.” |
+| 12 | — | — | *What did you learn about my eligibility?* | “Model uses the bucket, not the exact limit.” |
+| 13 | — | Click a **different card** in the list | — | “Card select is invisible to the model — by design.” |
 
-### Flow B — targeted eligibility then apply
+### Part D — Apply and chat reply (~3 min)
 
-> I earn £45,000 a year, good credit score — which Blackwell Bank card would suit me?
+| Step | Say | Click | Ask | Narrate |
+|------|-----|-------|-----|---------|
+| 14 | *Let's apply for the Cashback card* | Toolbar **Apply**, or **Continue to application** | — | — |
+| 15 | — | Fill Personal details → Address → Employment → upload ID + selfie → **Review** → **Submit** | — | “Write path stays in the iframe.” |
+| 16 | — | Wait for reviewing spinner → decision | — | “Now the **chat** should speak — visible user message.” |
+| 17 | — | — | — | On approval: delivery tracker — “Card is on its way.” |
+| 18 | — | — | *What happened with my application?* | — |
+| 19 | — | Press **⤢** fullscreen briefly | — | “Same app, one HTML bundle, fullscreen on demand.” |
 
-> Check my eligibility for the Rewards Card
-
-> Great, let's start the application
-
----
-
-### Flow C — existing customer journey
-
-> I'm already a Blackwell Bank customer — what new cards can I get?
-
-> Show me the Rewards Card details
-
-> Apply for it — I'm an existing customer
-
----
-
-### Flow D — fragment-first then expand
-
-> What's the APR on the Blackwell Rewards Card?
-
-*(Card detail fragment appears)*
-
-> Run an eligibility check for that card
-
-*(Eligibility widget appears)*
-
-> Now show me everything — the full card comparison
-
-*(Full UI opens)*
+**End:** Toolbar **Reset** → ready for the next audience.
 
 ---
 
-## Things to click during a live demo
+## 4. Short demos (90 seconds)
 
-| Action | Where | What it shows |
-|---|---|---|
-| Switch cards | Card list (left column, full view) | App-only tool — model never involved |
-| Check eligibility | Eligibility form (bottom-left, full view) | Green result box with credit limit |
-| Continue to application | Eligibility result CTA | Switches to stepper |
-| Save and exit | Form footer (left link) | Exits without submitting |
-| Continue | Form footer (right button) | Steps through the form |
-| Submit application | Final review step | Confirmation + sparkle animation + model notified |
-| ⤢ Expand | Top-right of any panel | Fullscreen mode |
+Turn on presenter mode first (`Shift + D`). Pick one script.
+
+### A — Existing customer hub tour
+
+**Opening prompt:** *I'm already a Blackwell customer — what cards can I get?*
+
+| Time | Do |
+|------|-----|
+| 0–20s | Note Sarah banner + personalisation reason |
+| 20–40s | Toolbar **Hub** → **Spend Insights** → click one category |
+| 40–60s | **Hub** → **Merchant Offers** → **Activate** → ask *Which offers are active on my card?* |
+| 60–90s | **Travel** → submit → ask *Where am I travelling?* |
+
+### B — New customer acquisition
+
+**Opening prompt:** *Show me Blackwell Bank credit cards*
+
+| Time | Do |
+|------|-----|
+| 0–25s | Compare two cards → **Compare selected** → note **Best for you** |
+| 25–45s | **Check your eligibility** → ask *What did you learn about my eligibility?* |
+| 45–70s | Toolbar **Apply** → quick fill through steps → **Submit** |
+| 70–90s | Narrate delivery tracker → ask *What happened with my application?* |
+
+### C — Recovery path
+
+**Opening prompt:** *Check my eligibility — I earn £12,000 and have fair credit*
+
+| Time | Do |
+|------|-----|
+| 0–35s | Show calm recovery screen — not a hard decline |
+| 35–55s | **Try a different card** → toolbar **Products** |
+| 55–85s | Re-run eligibility with good credit / £42,000 |
+| 85–90s | “Same session, recovered without leaving chat.” |
 
 ---
 
-## Tips for a live audience demo
+## 5. Prompt cheat sheet
 
-- **Start with Scenario 1** — the full UI is the most impressive opening and gives a complete picture in one shot
-- **Switch cards during the live view** to show app-only tools: the model isn't called but the UI updates instantly
-- **Fill in the eligibility form** yourself during the demo — it shows the interactive UI working in real time
-- **Submit the application** to trigger the `sendMessage` call — the model will respond in the chat after the confirmation screen appears
-- **Use the expand button** to demonstrate `requestDisplayMode` — the panel goes fullscreen and back
-- **Show the fragment scenarios separately** (Scenarios 2–4) to demonstrate that the same server delivers both full UIs and targeted widgets depending on what the model asks for
-- **Switch between ChatGPT and Claude** using the same endpoint (`https://garry-demo.meaburn.com/mcp`) to show transport compatibility
+Copy any of these into the chat. Rough wording is fine.
+
+### Hub and servicing
+
+| Say this | Opens |
+|----------|-------|
+| *Open my Blackwell Card Hub* | Hub tile launcher |
+| *Show my spend insights* | Category donut + drill-down |
+| *What merchant offers do I have?* | Offers carousel |
+| *Register travel to France in June* | Travel notice form |
+| *Am I eligible for a credit limit increase?* | Limit gauge + wallet link |
+| *Add my card to Apple Pay* | Wallet provisioning |
+
+### Acquisition
+
+| Say this | Opens |
+|----------|-------|
+| *Show me Blackwell Bank credit cards* | Full catalogue |
+| *Tell me about the Blackwell Rewards Card* | Single-card detail |
+| *Check if I'm eligible for the Cashback Card* | Eligibility widget |
+| *Apply for the Blackwell Rewards Card* | Application stepper |
+| *Compare the Rewards and Cashback cards* | Side-by-side compare |
+| *I travel a lot — what card fits?* | Travel-ranked catalogue |
+| *How much cashback on £2,000/month?* | Rewards calculator |
+| *Estimate balance transfer on £3,000 at 19.9%* | Balance transfer estimator |
+
+### Small widgets (fragment flow)
+
+Use when you want a **compact panel** instead of the full catalogue:
+
+1. *What's the APR on the Rewards Card?* → card detail
+2. *Check my eligibility for that card* → eligibility
+3. *Apply for it* → application
+4. *Now show me everything* → full catalogue
+
+### Follow-up prompts (after silent context pushes)
+
+Ask these **after** a panel action — the model should answer from context you did not retype:
+
+- *What eligibility result did you get for me?*
+- *Which offers are active on my card?*
+- *Where am I travelling and is my card protected?*
+- *What happened with my application?*
+
+---
+
+## 6. What the model sees (reference)
+
+| You do in the panel | SDK call | Model gets | Customer sees |
+|---------------------|----------|------------|---------------|
+| Click a card in the list | — | Nothing | Card detail updates |
+| Submit eligibility | `updateModelContext` | Decision, card name, limit **bucket** | Exact limit (e.g. £4,000) |
+| Activate an offer | `updateModelContext` | Offer token, partner name | Success feedback |
+| Submit travel notice | `updateModelContext` | Countries, dates, reference | Confirmation card |
+| Add to wallet | `updateModelContext` | Card name, wallet, status | Apple Pay success |
+| Application decision | `sendMessage` | User-role approval/refer text | Tracker or recovery screen |
+| Toggle compare basket | — | Nothing | Compare basket updates |
+
+**Presenter toolbar**
+
+| Button | Tool / effect |
+|--------|----------------|
+| **Hub** | `blackwell-open-hub` |
+| **Products** | Full card catalogue |
+| **Spend** | Spend insights |
+| **Apply** | Application stepper |
+| **Reset** | Clear session, return to Hub |
+
+---
+
+## 7. Live tips
+
+- **Lead with the main demo (Section 3)** — it covers hub, LLM sync, and acquisition in one arc.
+- **Open the inspector before eligibility** — the £4,000 vs £3k–£5k bucket is the money shot.
+- **Do not apologise for silent clicks** — card select with no chat activity is the feature.
+- **Wait for the underwriting spinner** — `sendMessage` needs the async beat before you ask follow-ups.
+- **Rebuild and restart** after code changes; reconnect ChatGPT if tool count ≠ 24.
+
+---
+
+## 8. Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| Hub opens the card catalogue instead | Stale server — rebuild, restart tunnel, reconnect MCP |
+| Only 6 tools in ChatGPT | Old deployment — kill port 3001, run `npm run start:cloud`, reconnect |
+| Model doesn’t know eligibility result | Host may not support `updateModelContext` — try Claude Desktop |
+| Inspector not visible | Press `Shift + D` inside the panel |
+| Application stuck on identity step | Click **both** upload zones (photo ID + selfie), then **Continue** |
+| Eligibility result off-screen | Panel should auto-scroll after submit — scroll down manually if needed |

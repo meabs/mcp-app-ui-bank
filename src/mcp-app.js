@@ -4,9 +4,26 @@ import {
   applyHostFonts,
   applyHostStyleVariables,
 } from "@modelcontextprotocol/ext-apps";
-import { createApplicationJourney, runEligibilityCheck } from "./demo-data.js";
+import {
+  calculateRewards,
+  createApplicationJourney,
+  createDeliveryTracker,
+  estimateBalanceTransfer,
+  getCategoryMerchants,
+  getCompareRecommendation,
+  getCardComparison,
+  restoreApplicationDraft,
+  runEligibilityCheck,
+  serializeApplicationDraft,
+  toModelContext,
+} from "./demo-data.js";
+import { createFeatureViews } from "./feature-views.js";
 import "./global.css";
 import "./mcp-app.css";
+
+const DRAFT_STORAGE_KEY = "blackwell-application-draft";
+const DEMO_MODE_STORAGE_KEY = "blackwell-demo-mode";
+const DEFAULT_DEMO_CARD_ID = "blackwell-rewards";
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -20,16 +37,115 @@ const state = {
   applicationJourney: null,
   selectedCardId: null,
   submitted: false,
+  profile: null,
+  compareIds: [],
+  calculator: null,
+  balanceTransfer: null,
+  hub: null,
+  spendInsights: null,
+  merchantOffers: null,
+  travelNotice: null,
+  creditLimit: null,
+  wallet: null,
+  comparison: null,
+  stepIndex: 0,
+  formData: {},
+  verificationStatus: "not-started",
+  verificationIdUploaded: false,
+  verificationSelfieUploaded: false,
+  underwritingStatus: null,
+  underwritingDecision: null,
+  applicantName: "Alex",
+  offerActivationFeedback: null,
+  activeSpendCategory: null,
+  lastModelContext: null,
 };
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 
 const appRoot = document.getElementById("app-root");
 const expandBtn = document.getElementById("expand-btn");
+const demoToolbar = document.getElementById("demo-toolbar");
+const modelContextPanel = document.getElementById("model-context-panel");
+const modelContextCustomer = document.getElementById("model-context-customer");
+const modelContextModel = document.getElementById("model-context-model");
 
 // ─── App instance ─────────────────────────────────────────────────────────────
 
 const app = new App({ name: "Blackwell Bank Card Services", version: "1.0.0" });
+const IS_EMBEDDED = window.parent !== window;
+
+let features;
+let demoModeEnabled = false;
+
+function formatPretty(value) {
+  if (typeof value === "string") {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    } catch {
+      return value;
+    }
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+function renderModelContextPanel() {
+  if (!modelContextPanel) return;
+  const shouldShow = demoModeEnabled && Boolean(state.lastModelContext);
+  modelContextPanel.classList.toggle("hidden", !shouldShow);
+  if (!shouldShow) return;
+
+  if (modelContextCustomer) {
+    modelContextCustomer.textContent = formatPretty(state.lastModelContext.customer ?? {});
+  }
+  if (modelContextModel) {
+    modelContextModel.textContent = formatPretty(state.lastModelContext.model ?? "{}");
+  }
+}
+
+function pushModelContext(event, payload) {
+  const text = toModelContext(event, payload);
+  state.lastModelContext = {
+    event,
+    customer: payload,
+    model: text,
+    at: new Date().toISOString(),
+  };
+  if (!IS_EMBEDDED) {
+    renderModelContextPanel();
+    return;
+  }
+  try {
+    app.updateModelContext({ content: [{ type: "text", text }] }).catch(() => {});
+  } catch {
+    // Host may not support model context updates
+  }
+  renderModelContextPanel();
+}
+
+function initFeatures() {
+  features = createFeatureViews({
+    state,
+    app,
+    DRAFT_STORAGE_KEY,
+    callServerTool,
+    showViewForMode,
+    notifyHostSize,
+    render,
+    pushModelContext,
+    renderModelContextPanel,
+    demoData: {
+      calculateRewards,
+      createDeliveryTracker,
+      estimateBalanceTransfer,
+      getCategoryMerchants,
+      getCompareRecommendation,
+      getCardComparison,
+      restoreApplicationDraft,
+      serializeApplicationDraft,
+    },
+  });
+}
 
 // ─── Host context ─────────────────────────────────────────────────────────────
 
@@ -58,13 +174,210 @@ const VIEW_BY_MODE = {
   journey: "view-journey",
   eligibility: "view-journey",
   application: "view-journey",
+  compare: "view-compare",
+  calculator: "view-calculator",
+  "balance-transfer": "view-balance-transfer",
+  hub: "view-hub",
+  "spend-insights": "view-spend-insights",
+  "merchant-offers": "view-merchant-offers",
+  "travel-notice": "view-travel-notice",
+  "credit-limit": "view-credit-limit",
+  wallet: "view-wallet",
 };
+
+async function callServerTool(name, args = {}) {
+  try {
+    const result = await app.callServerTool({ name, arguments: args });
+    handleToolResult(result);
+    return result;
+  } catch (err) {
+    console.error(`Tool ${name} failed:`, err);
+    return null;
+  }
+}
+
+function loadDraftFromStorage() {
+  try {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraftToStorage(draft) {
+  try {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // storage unavailable in sandbox
+  }
+}
+
+function readDemoModeFromStorage() {
+  try {
+    return localStorage.getItem(DEMO_MODE_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeDemoModeToStorage(enabled) {
+  try {
+    if (enabled) {
+      localStorage.setItem(DEMO_MODE_STORAGE_KEY, "1");
+      return;
+    }
+    localStorage.removeItem(DEMO_MODE_STORAGE_KEY);
+  } catch {
+    // storage unavailable in sandbox
+  }
+}
+
+function hasDemoQueryParam() {
+  try {
+    return new URLSearchParams(window.location.search).get("demo") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setDemoMode(enabled) {
+  demoModeEnabled = Boolean(enabled);
+  if (demoToolbar) {
+    demoToolbar.classList.toggle("hidden", !demoModeEnabled);
+  }
+  renderModelContextPanel();
+}
 
 function showViewForMode(mode) {
   showView(VIEW_BY_MODE[mode] ?? "view-full");
 }
 
+async function resetDemoSession(destination = "hub") {
+  try {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    // storage unavailable in sandbox
+  }
+  state.journeyPhase = null;
+  state.showJourney = false;
+  state.eligibility = null;
+  state.applicationJourney = null;
+  state.submitted = false;
+  state.stepIndex = 0;
+  state.formData = {};
+  state.verificationStatus = "not-started";
+  state.verificationIdUploaded = false;
+  state.verificationSelfieUploaded = false;
+  state.underwritingStatus = null;
+  state.underwritingDecision = null;
+  state.compareIds = [];
+  state.comparison = null;
+  state.calculator = null;
+  state.balanceTransfer = null;
+  state.activeSpendCategory = null;
+  state.offerActivationFeedback = null;
+  state.lastModelContext = null;
+  document.getElementById("full-journey-section")?.classList.add("hidden");
+  renderModelContextPanel();
+
+  if (destination === "products") {
+    state.entryMode = "full";
+    const result = await callServerTool("blackwell-browse-cards");
+    if (!result) {
+      state.mode = "full";
+      showViewForMode("full");
+      render();
+    }
+    return;
+  }
+
+  state.entryMode = "hub";
+  const result = await callServerTool("blackwell-open-hub");
+  if (!result) {
+    state.mode = "hub";
+    showViewForMode("hub");
+    render();
+  }
+}
+
+async function runDemoToolbarAction(action) {
+  if (action === "hub") {
+    const result = await callServerTool("blackwell-open-hub");
+    if (!result) {
+      state.mode = "hub";
+      state.entryMode = "hub";
+      showViewForMode("hub");
+      render();
+    }
+    return;
+  }
+
+  if (action === "products") {
+    const result = await callServerTool("blackwell-browse-cards");
+    if (!result) {
+      state.mode = "full";
+      state.entryMode = "full";
+      showViewForMode("full");
+      render();
+    }
+    return;
+  }
+
+  if (action === "spend") {
+    const result = await callServerTool("blackwell-spend-insights");
+    if (!result) {
+      state.mode = "spend-insights";
+      showViewForMode("spend-insights");
+      render();
+    }
+    return;
+  }
+
+  if (action === "apply") {
+    state.selectedCardId = state.selectedCardId ?? DEFAULT_DEMO_CARD_ID;
+    const result = await callServerTool("blackwell-apply", { cardId: DEFAULT_DEMO_CARD_ID });
+    if (!result) {
+      state.mode = "journey";
+      state.entryMode = "journey";
+      state.applicationJourney = createApplicationJourney({ cardId: DEFAULT_DEMO_CARD_ID });
+      state.journeyPhase = "application";
+      state.showJourney = true;
+      showViewForMode("journey");
+      render();
+    }
+    return;
+  }
+
+  if (action === "reset") {
+    await resetDemoSession("hub");
+  }
+}
+
+function wireDemoToolbar() {
+  const queryEnabled = hasDemoQueryParam();
+  if (queryEnabled) {
+    writeDemoModeToStorage(true);
+  }
+  setDemoMode(queryEnabled || readDemoModeFromStorage());
+
+  demoToolbar?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-demo-action]");
+    if (!button) return;
+    runDemoToolbarAction(button.dataset.demoAction);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!event.shiftKey || event.key.toLowerCase() !== "d") return;
+    event.preventDefault();
+    const nextMode = !demoModeEnabled;
+    setDemoMode(nextMode);
+    writeDemoModeToStorage(nextMode);
+  });
+}
+
 function notifyHostSize() {
+  if (!IS_EMBEDDED) return;
   try {
     const height = Math.ceil(Math.max(
       document.documentElement.scrollHeight,
@@ -77,7 +390,7 @@ function notifyHostSize() {
       document.body.offsetWidth,
       360,
     ));
-    app.sendSizeChanged({ width, height });
+    app.sendSizeChanged({ width, height }).catch(() => {});
   } catch {
     // Host not ready yet
   }
@@ -104,6 +417,21 @@ function setJourneyTitle(label) {
   if (el) el.textContent = label;
 }
 
+function focusJourneyContent(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  requestAnimationFrame(() => {
+    const scrollTarget = container.closest("#full-journey-section, #view-journey") ?? container;
+    scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+    const heading = container.querySelector("h2, h3");
+    if (heading) {
+      heading.setAttribute("tabindex", "-1");
+      heading.focus({ preventScroll: true });
+    }
+    notifyHostSize();
+  });
+}
+
 function renderJourneyPhase() {
   const { progressId, bodyId } = journeyTargets();
   const progressEl = document.getElementById(progressId);
@@ -123,12 +451,12 @@ function renderJourneyPhase() {
     case "application":
       progressEl.classList.remove("hidden");
       setJourneyTitle("Application");
-      renderJourney(progressId, bodyId);
+      features?.renderJourney(progressId, bodyId, getFormFieldsForStep);
       break;
     case "confirmation":
       progressEl.classList.add("hidden");
       setJourneyTitle("Application");
-      renderConfirmation(document.getElementById(bodyId), state.applicationJourney?.card);
+      features?.renderConfirmation(document.getElementById(bodyId), state.applicationJourney?.card);
       break;
     default:
       break;
@@ -165,9 +493,13 @@ function extractPayload(result) {
 
 function hasRenderableData(payload) {
   if (!payload || typeof payload !== "object") return false;
-  if (payload.kind === "embedded-sales-demo") return Boolean(payload.recommendations?.cards?.length);
-  if (payload.kind === "card-recommendations") return Boolean(payload.cards?.length);
-  if (payload.kind === "eligibility-check") return true;
+  const kinds = [
+    "embedded-sales-demo", "card-recommendations", "eligibility-check",
+    "application-journey", "card-comparison", "rewards-calculator",
+    "balance-transfer-estimate", "card-hub", "spend-insights",
+    "merchant-offers", "travel-notice", "credit-limit-offer", "wallet-provision",
+  ];
+  if (kinds.includes(payload.kind)) return true;
   if (payload.kind === "application-journey") return Boolean(payload.steps?.length || payload.card);
   return Boolean(payload.recommendations?.cards?.length || payload.cards?.length);
 }
@@ -190,8 +522,41 @@ function handleToolResult(result) {
     render();
     return true;
   }
+  if (payload.kind === "compare-basket") {
+    state.compareIds = payload.compareIds ?? state.compareIds;
+    render();
+    return true;
+  }
   if (payload.kind === "application-submitted") {
     state.submitted = true;
+    state.underwritingStatus = payload.underwritingStatus ?? "reviewing";
+    state.applicantName = payload.applicantName ?? state.applicantName;
+    features?.beginAsyncUnderwriting();
+    render();
+    return true;
+  }
+  if (payload.kind === "application-saved") {
+    if (payload.draft) saveDraftToStorage(payload.draft);
+    return true;
+  }
+  if (payload.kind === "verification-uploaded") {
+    state.verificationStatus = "pending";
+    return true;
+  }
+  if (payload.kind === "underwriting-complete") {
+    state.underwritingStatus = "complete";
+    state.underwritingDecision = payload;
+    features?.notifyUnderwritingDecision(payload);
+    renderJourneyPhase();
+    return true;
+  }
+  if (payload.kind === "offer-activated" || payload.kind === "travel-notice-submitted" || payload.kind === "wallet-provisioned") {
+    if (payload.offers) state.merchantOffers = payload;
+    if (payload.kind === "offer-activated") {
+      state.offerActivationFeedback = payload.activationCopy ?? payload.message ?? "Offer activated";
+    }
+    if (payload.reference) state.travelNotice = payload;
+    if (payload.status === "provisioned") state.wallet = payload;
     render();
     return true;
   }
@@ -201,17 +566,39 @@ function handleToolResult(result) {
   if (payload.kind === "embedded-sales-demo") {
     state.recommendations    = payload.recommendations;
     state.applicationJourney = payload.applicationJourney;
+    state.profile            = payload.profile ?? null;
     state.submitted          = false;
     state.selectedCardId     = payload.recommendations?.cards?.[0]?.id ?? null;
     state.showJourney        = false;
     state.journeyPhase       = null;
     state.eligibility        = null;
+    state.underwritingStatus = null;
+    state.underwritingDecision = null;
+    state.activeSpendCategory = null;
+    features?.tryResumeDraft();
   }
 
   if (payload.kind === "card-recommendations") {
     state.recommendations = payload;
     state.selectedCardId = payload.selectedCardId ?? payload.cards?.[0]?.id ?? state.selectedCardId;
   }
+
+  if (payload.kind === "card-comparison") {
+    state.comparison = payload;
+    state.compareIds = payload.cardIds ?? [];
+  }
+
+  if (payload.kind === "rewards-calculator") state.calculator = payload;
+  if (payload.kind === "balance-transfer-estimate") state.balanceTransfer = payload;
+  if (payload.kind === "card-hub") state.hub = payload;
+  if (payload.kind === "spend-insights") {
+    state.spendInsights = payload;
+    state.activeSpendCategory = null;
+  }
+  if (payload.kind === "merchant-offers") state.merchantOffers = payload;
+  if (payload.kind === "travel-notice") state.travelNotice = payload;
+  if (payload.kind === "credit-limit-offer") state.creditLimit = payload;
+  if (payload.kind === "wallet-provision" || payload.kind === "wallet-provisioned") state.wallet = payload;
 
   if (payload.kind === "eligibility-check") {
     state.eligibility = payload;
@@ -220,12 +607,19 @@ function handleToolResult(result) {
   if (payload.kind === "application-journey") {
     state.applicationJourney = payload;
     state.submitted          = false;
+    state.stepIndex          = payload.steps?.findIndex((s) => s.status === "current") ?? 0;
+    state.formData           = payload.draftFormData ?? state.formData;
+    if (payload.resumed) {
+      state.journeyPhase = "application";
+      state.showJourney = true;
+    }
   }
 
   const incomingMode = payload.mode;
 
-  // Started in full view — fold fragment tools into the same panel
-  if (state.entryMode === "full" && incomingMode && incomingMode !== "full") {
+  // Fold eligibility/application into full panel only — other modes get their own view
+  const foldIntoFull = incomingMode === "eligibility" || incomingMode === "application";
+  if (state.entryMode === "full" && foldIntoFull) {
     if (incomingMode === "eligibility") {
       state.journeyPhase = state.eligibility ? "eligibility-result" : "eligibility-form";
       state.showJourney = true;
@@ -236,6 +630,15 @@ function handleToolResult(result) {
     }
     state.mode = "full";
     showViewForMode("full");
+    render();
+    return true;
+  }
+
+  // Hub and servicing modes always take over the view
+  if (incomingMode === "hub") {
+    state.mode = "hub";
+    state.entryMode = "hub";
+    showViewForMode("hub");
     render();
     return true;
   }
@@ -273,6 +676,7 @@ function handleToolResult(result) {
 // ─── Render orchestrator ──────────────────────────────────────────────────────
 
 function render() {
+  renderPersonalisationBanner();
   switch (state.mode) {
     case "full":
       renderCards();
@@ -285,6 +689,33 @@ function render() {
     case "card-detail":
       renderCardDetail("fragment-card-detail-body");
       break;
+    case "compare":
+      features?.renderComparison();
+      break;
+    case "calculator":
+      features?.renderCalculator();
+      break;
+    case "balance-transfer":
+      features?.renderBalanceTransfer();
+      break;
+    case "hub":
+      features?.renderHub();
+      break;
+    case "spend-insights":
+      features?.renderSpendInsights();
+      break;
+    case "merchant-offers":
+      features?.renderMerchantOffers();
+      break;
+    case "travel-notice":
+      features?.renderTravelNotice();
+      break;
+    case "credit-limit":
+      features?.renderCreditLimit();
+      break;
+    case "wallet":
+      features?.renderWallet();
+      break;
     case "journey":
     case "eligibility":
     case "application":
@@ -295,14 +726,58 @@ function render() {
       renderJourneyPhase();
       break;
   }
+  renderModelContextPanel();
   notifyHostSize();
 }
 
 // ─── renderCards ─────────────────────────────────────────────────────────────
 
+function renderPersonalisationBanner() {
+  const banner = document.getElementById("personalisation-banner");
+  if (!banner) return;
+  if (!state.profile) {
+    banner.classList.add("hidden");
+    return;
+  }
+  banner.classList.remove("hidden");
+  banner.innerHTML = `
+    <div class="personalisation-copy">
+      <strong>${state.profile.greeting}</strong>
+      <span>${state.profile.subline}</span>
+      ${state.profile.personalisedReason ? `<p class="personalisation-reason">${state.profile.personalisedReason}</p>` : ""}
+    </div>
+    <span style="font-size:0.78rem;font-weight:600;opacity:0.9">Pre-approved ${state.profile.preApprovedLimit}</span>
+  `;
+}
+
+function toggleCompare(cardId) {
+  const ids = new Set(state.compareIds);
+  if (ids.has(cardId)) ids.delete(cardId);
+  else ids.add(cardId);
+  state.compareIds = [...ids];
+  renderCards();
+  callServerTool("blackwell-toggle-compare", { cardId, compareIds: state.compareIds });
+}
+
 function renderCards() {
   const container = document.getElementById("card-list-items");
   if (!container || !state.recommendations) return;
+
+  const headline = document.getElementById("card-list-headline");
+  if (headline) headline.textContent = state.recommendations.headline ?? "Recommended for you";
+
+  const needSummary = document.getElementById("need-summary");
+  if (needSummary) {
+    if (state.recommendations.needSummary) {
+      needSummary.textContent = state.recommendations.needSummary;
+      needSummary.classList.remove("hidden");
+    } else {
+      needSummary.classList.add("hidden");
+    }
+  }
+
+  const compareCount = document.getElementById("compare-count");
+  if (compareCount) compareCount.textContent = `(${state.compareIds.length})`;
 
   const { cards } = state.recommendations;
   container.innerHTML = cards
@@ -315,6 +790,10 @@ function renderCards() {
         <p class="card-list-summary">${card.summary}</p>
         <p class="card-list-benefit">${card.strengths[0]}</p>
         <p class="card-list-benefit">${card.strengths[1] ?? ""}</p>
+        <label class="card-compare-toggle" data-compare-id="${card.id}">
+          <input type="checkbox" ${state.compareIds.includes(card.id) ? "checked" : ""} />
+          Compare
+        </label>
         <span class="card-list-view-link">View details</span>
         <div class="card-list-mini-visual" aria-hidden="true">
           <div class="mini-card-top"><div class="mini-card-chip"></div></div>
@@ -329,14 +808,22 @@ function renderCards() {
     .join("");
 
   container.querySelectorAll(".card-list-item").forEach((item) => {
+    const cardId = item.dataset.cardId;
+    item.querySelector(".card-compare-toggle")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleCompare(cardId);
+    });
     const handler = () => {
-      const cardId = item.dataset.cardId;
       if (cardId === state.selectedCardId) return;
       state.selectedCardId = cardId;
       renderCards();
       renderCardDetail("full-card-detail-body");
+      callServerTool("blackwell-select-card", { cardId });
     };
-    item.addEventListener("click", handler);
+    item.addEventListener("click", (e) => {
+      if (e.target.closest(".card-compare-toggle")) return;
+      handler();
+    });
     item.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") handler(); });
   });
 }
@@ -364,7 +851,8 @@ function renderCardDetail(containerId) {
           <small>Credit subject to status. T&amp;Cs apply.</small>
         </div>
         <button class="btn-primary" data-action="check-eligibility">Check your eligibility</button>
-        <button class="btn-secondary" data-action="key-info">View key information</button>
+        <button class="btn-secondary" data-action="rewards-calc">Rewards calculator</button>
+        <button class="btn-secondary" data-action="balance-transfer">Balance transfer estimator</button>
       </div>
       <div class="card-detail-right">
         <div class="card-visual" aria-label="${card.name} card image" role="img">
@@ -385,6 +873,18 @@ function renderCardDetail(containerId) {
   container.querySelector("[data-action='check-eligibility']")?.addEventListener("click", () => {
     state.eligibility = null;
     beginJourney("eligibility-form");
+  });
+  container.querySelector("[data-action='rewards-calc']")?.addEventListener("click", () => {
+    state.calculator = calculateRewards(card.id, 1500);
+    state.mode = "calculator";
+    showViewForMode("calculator");
+    features?.renderCalculator();
+  });
+  container.querySelector("[data-action='balance-transfer']")?.addEventListener("click", () => {
+    state.balanceTransfer = estimateBalanceTransfer({ cardId: card.id });
+    state.mode = "balance-transfer";
+    showViewForMode("balance-transfer");
+    features?.renderBalanceTransfer();
   });
 }
 
@@ -440,6 +940,8 @@ function renderEligibilityForm(containerId) {
     state.eligibility = payload;
     state.journeyPhase = "eligibility-result";
     renderEligibilityResult(containerId);
+    focusJourneyContent(containerId);
+    pushModelContext("eligibility", payload);
   });
 }
 
@@ -463,7 +965,11 @@ function renderEligibilityResult(containerId) {
         <p class="eligibility-success-desc">Congratulations! Based on the information you've entered, you're likely to be approved for the ${recommendedCard?.name ?? "card"}.</p>
       </div>
     </div>
-  ` : `<div class="eligibility-badge refer">⚠ Manual review required</div>`}`;
+  ` : `
+    <div class="eligibility-recovery">
+      <div class="eligibility-badge refer">We'll review this with you</div>
+      <p class="eligibility-success-desc">You are not declined. We just need a little more information before we can confirm the best card for you.</p>
+    </div>`}`;
 
   const statsHtml = isPreQualified && recommendedCard ? `
     <div class="eligibility-stats">
@@ -488,10 +994,17 @@ function renderEligibilityResult(containerId) {
     <button class="btn-primary" data-action="continue-application">Continue to application</button>
     <button class="btn-secondary" data-action="check-different">Check a different card</button>
   ` : `
-    <p style="color:var(--bw-muted);font-size:0.85rem;margin-bottom:16px;">
-      Please contact us to explore your options or visit a branch for assistance.
-    </p>
-    <button class="btn-secondary" data-action="check-different">Try different details</button>
+    <div class="recovery-panel">
+      <h3>Next steps</h3>
+      <ul>
+        <li>Try a different card if your priorities have changed.</li>
+        <li>Visit a branch for one-to-one support.</li>
+        <li>Run the check again with updated details when ready.</li>
+      </ul>
+    </div>
+    <button class="btn-primary" data-action="try-different-card">Try a different card</button>
+    <button class="btn-secondary" data-action="visit-branch">Visit a branch</button>
+    <button class="btn-secondary" data-action="check-different">Check eligibility again</button>
   `;
 
   container.innerHTML = `
@@ -504,117 +1017,47 @@ function renderEligibilityResult(containerId) {
       cardId: recommendedCard?.id ?? "blackwell-rewards",
     });
     state.submitted = false;
+    state.verificationStatus = "not-started";
+    state.verificationIdUploaded = false;
+    state.verificationSelfieUploaded = false;
     state.journeyPhase = "application";
     renderJourneyPhase();
+    focusJourneyContent(containerId);
   });
+
+  focusJourneyContent(containerId);
 
   container.querySelector("[data-action='check-different']")?.addEventListener("click", () => {
     state.eligibility = null;
     state.journeyPhase = "eligibility-form";
     renderEligibilityForm(containerId);
   });
-}
 
-// ─── renderJourney ────────────────────────────────────────────────────────────
-
-function renderJourney(progressId, formId) {
-  const progressContainer = document.getElementById(progressId);
-  const formContainer     = document.getElementById(formId);
-  if (!progressContainer || !formContainer || !state.applicationJourney) return;
-
-  const { steps, card } = state.applicationJourney;
-
-  // Step progress bar
-  const progressItems = [];
-  steps.forEach((step, i) => {
-    progressItems.push(`
-      <div class="step-node ${step.status}" aria-label="${step.title}, ${step.status}">
-        <div class="step-dot">${step.status === "done" ? "✓" : i + 1}</div>
-        <span class="step-label">${step.title}</span>
-      </div>
-    `);
-    if (i < steps.length - 1) {
-      progressItems.push(`<div class="step-line ${step.status === "done" ? "done" : ""}"></div>`);
-    }
-  });
-  progressContainer.innerHTML = progressItems.join("");
-
-  // Form body or confirmation
-  if (state.submitted) {
-    renderConfirmation(formContainer, card);
-    return;
-  }
-
-  const currentStep = steps.find((s) => s.status === "current") ?? steps[0];
-  formContainer.innerHTML = `
-    <form class="app-form" id="${formId}-form" novalidate>
-      <h3 style="margin:0 0 4px;font-size:1rem;font-weight:700;color:var(--bw-text);">
-        Let's start with your ${currentStep.title.toLowerCase()}
-      </h3>
-      <p style="margin:0 0 14px;font-size:0.82rem;color:var(--bw-muted);">
-        We'll use this to find your application and do a credit check.
-      </p>
-      ${getFormFieldsForStep(currentStep.title)}
-      <div class="form-actions">
-        <button type="button" class="btn-link" id="${formId}-save">Save and exit</button>
-        <button type="submit" class="btn-primary form-continue-btn">Continue</button>
-      </div>
-    </form>
-  `;
-
-  document.getElementById(`${formId}-form`)?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const applicantName = (fd.get("fullName") || "Alex").toString().trim();
-    state.submitted = true;
-    state.journeyPhase = "confirmation";
-    renderConfirmation(formContainer, card);
-  });
-}
-
-// ─── renderConfirmation ───────────────────────────────────────────────────────
-
-function renderConfirmation(container, card) {
-  container.innerHTML = `
-    <div class="confirmation-panel">
-      <div class="confirmation-sparkle-wrap" aria-hidden="true">
-        <div class="sparkle sparkle-1"></div>
-        <div class="sparkle sparkle-2"></div>
-        <div class="sparkle sparkle-3"></div>
-        <div class="sparkle sparkle-4"></div>
-        <div class="confirmation-icon">✓</div>
-      </div>
-      <h2 class="confirmation-title">Your application has been submitted</h2>
-      <p class="confirmation-subtitle">
-        Thanks, Alex. We'll let you know our decision within a few minutes.
-      </p>
-      <p class="next-steps-heading">What happens next?</p>
-      <ul class="next-steps">
-        <li>We're reviewing your application</li>
-        <li>You'll receive a decision notification here</li>
-        <li>If approved, your card will be on its way</li>
-      </ul>
-      <button class="btn-secondary" id="return-to-card-btn">Return to card details</button>
-    </div>
-  `;
-
-  document.getElementById("return-to-card-btn")?.addEventListener("click", () => {
-    state.submitted = false;
-    state.showJourney = false;
-    state.journeyPhase = null;
+  container.querySelector("[data-action='try-different-card']")?.addEventListener("click", () => {
     state.eligibility = null;
-    document.getElementById("full-journey-section")?.classList.add("hidden");
-    if (state.entryMode === "full" || state.mode === "full") {
+    state.journeyPhase = null;
+    state.showJourney = false;
+    if (state.entryMode === "full") {
+      document.getElementById("full-journey-section")?.classList.add("hidden");
       state.mode = "full";
       showViewForMode("full");
     } else {
-      state.mode = "journey";
-      state.journeyPhase = "eligibility-result";
-      showViewForMode("journey");
+      state.mode = "card-detail";
+      showViewForMode("card-detail");
     }
     render();
   });
+
+  container.querySelector("[data-action='visit-branch']")?.addEventListener("click", () => {
+    const panel = container.querySelector(".recovery-panel");
+    if (!panel || panel.querySelector(".recovery-note")) return;
+    panel.insertAdjacentHTML(
+      "beforeend",
+      `<p class="recovery-note">Bring photo ID and proof of address if you visit us in branch.</p>`,
+    );
+  });
 }
+
 
 // ─── getFormFieldsForStep ─────────────────────────────────────────────────────
 
@@ -686,6 +1129,8 @@ expandBtn?.addEventListener("click", async () => {
   await app.requestDisplayMode({ mode: "fullscreen" }).catch(() => {});
 });
 
+wireDemoToolbar();
+
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
 let bootstrapped = false;
@@ -694,7 +1139,7 @@ async function bootstrapFromFallback() {
   if (bootstrapped) return true;
 
   const candidates = [
-    "https://garry-demo.meaburn.com/api/demo",
+    "https://bank.myareareport.com/api/demo",
     "http://localhost:3001/api/demo",
   ];
   for (const url of candidates) {
@@ -719,10 +1164,14 @@ app.onhostcontextchanged = (ctx) => {
 app.ontoolresult = (result) => {
   if (handleToolResult(result)) bootstrapped = true;
 };
-app.onerror = console.error;
+app.onerror = (error) => {
+  if (IS_EMBEDDED) console.error(error);
+};
 app.onteardown = async () => ({});
 
-app.connect().catch(console.error).then(async () => {
+async function startApp() {
+  initFeatures();
+  features?.wireGlobalNav();
   const ctx = app.getHostContext();
   if (ctx) applyHostContext(ctx);
 
@@ -736,4 +1185,10 @@ app.connect().catch(console.error).then(async () => {
   if (!bootstrapped) {
     showBootstrapError("Unable to load cards. Try: Show me Blackwell Bank credit cards");
   }
-});
+}
+
+if (!IS_EMBEDDED) {
+  startApp();
+} else {
+  app.connect().catch(() => null).then(startApp);
+}

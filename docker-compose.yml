@@ -1,0 +1,13 @@
+services:
+  mcp-bank:
+    container_name: mcp-bank
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mcp-bank:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+    ports:
+      - "127.0.0.1:3002:3001"

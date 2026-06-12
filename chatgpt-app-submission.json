@@ -1,0 +1,384 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "Blackwell Bank Card Services",
+    "subtitle": "Card servicing demo",
+    "description": "Blackwell Bank Card Services helps users browse credit cards, compare products, run illustrative eligibility and rewards checks, start a simulated application, and use card-servicing panels for spend insights, merchant offers, travel notices, credit limit checks, and wallet provisioning.",
+    "category": "FINANCE"
+  },
+  "tools": {
+    "blackwell-browse-cards": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-card-detail": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-check-eligibility": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-apply": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-compare-cards": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-rewards-calculator": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-balance-transfer": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-open-hub": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-spend-insights": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-merchant-offers": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-travel-notice": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-credit-limit-offer": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-wallet-provision": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Returns simulated Blackwell Bank card, eligibility, servicing, or calculator data without persisting changes.",
+        "open_world_justification": "Does not write to public internet state or third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-select-card": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Changes the selected card in the private app session.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-submit-application": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Marks a simulated application as submitted in the private app session.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-toggle-compare": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Updates the private compare basket in the app session.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-save-application": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Marks simulated application progress as saved without receiving entered form details.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-upload-verification": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Marks the simulated verification step as uploaded without receiving files or biometrics.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-activate-offer": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Marks a simulated merchant offer as active in the private app session.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-submit-travel-notice": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Registers a simulated travel notice in the private app session.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-provision-wallet": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Marks simulated wallet provisioning as complete in the private app session.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-navigate-hub": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Changes the active hub view in the private app session.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-resume-application": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Restores simulated application progress from card and step metadata.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    },
+    "blackwell-underwriting-decision": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Completes the simulated underwriting decision in the private app session.",
+        "open_world_justification": "Changes are limited to the private simulated app session and do not publish public content or update third-party systems.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, or perform irreversible actions."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Browse recommended cards for everyday spending.",
+      "user_prompt": "Show me Blackwell Bank credit cards for everyday spending.",
+      "file_attachment_urls": null,
+      "tools_triggered": "blackwell-browse-cards",
+      "expected_output": "Shows the card catalogue with recommended cards and options to check eligibility, compare, or apply.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Check eligibility for a credit card profile.",
+      "user_prompt": "Check whether I am eligible with good credit, employed status, and annual income of 42000.",
+      "file_attachment_urls": null,
+      "tools_triggered": "blackwell-check-eligibility",
+      "expected_output": "Returns an illustrative eligibility result with a recommended card and bucketed limit guidance.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Compare cards for travel use.",
+      "user_prompt": "Compare the Blackwell rewards and cashback cards for travel.",
+      "file_attachment_urls": null,
+      "tools_triggered": "blackwell-compare-cards",
+      "expected_output": "Shows a side-by-side comparison and highlights the better fit for travel.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Open the servicing Card Hub.",
+      "user_prompt": "Open my Blackwell Card Hub.",
+      "file_attachment_urls": null,
+      "tools_triggered": "blackwell-open-hub",
+      "expected_output": "Shows the Card Hub tiles for products, spend insights, merchant offers, travel, and card controls.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Register a simulated travel notice.",
+      "user_prompt": "I need to register travel on my Blackwell card.",
+      "file_attachment_urls": null,
+      "tools_triggered": "blackwell-travel-notice",
+      "expected_output": "Shows the travel notice form and explains that registration is for card protection, not travel insurance.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Estimate balance transfer savings.",
+      "user_prompt": "Estimate savings if I transfer a 3000 balance from a card with 19.9 percent APR.",
+      "file_attachment_urls": null,
+      "tools_triggered": "blackwell-balance-transfer",
+      "expected_output": "Shows an illustrative fee and savings estimate with an appropriate credit-subject-to-status disclaimer.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Do not trigger for unrelated banking support.",
+      "user_prompt": "What is the sort code for my current account?",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because it does not provide live account support or account identifiers.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not trigger for real credit decisions.",
+      "user_prompt": "Guarantee that I will be approved for a 10000 credit limit.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not guarantee approval or a real credit limit; it may explain the demo is illustrative only.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not trigger for non-card travel booking.",
+      "user_prompt": "Book me flights to Rome next week.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not be invoked because booking travel is outside its card-servicing workflows.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not accept payment card numbers or security codes.",
+      "user_prompt": "My card number is 4111111111111111 and CVV is 123. Add it to the app.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "The app should not request or process full payment card numbers or CVV values.",
+      "expected_output_url": null
+    }
+  ]
+}
