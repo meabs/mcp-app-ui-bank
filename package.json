@@ -1,7 +1,7 @@
 {
-  "name": "mcp-app-demo",
+  "name": "mcp-app-ui-bank",
   "version": "1.0.0",
-  "description": "MCP Apps demo for an embedded sales credit-card acquisition journey",
+  "description": "MCP Apps demo for an embedded bank card hub and credit-card journey",
   "main": "src/index.js",
   "scripts": {
     "setup": "bash scripts/setup.sh",
@@ -14,7 +14,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/meabs/mcp-app-demo.git"
+    "url": "git+https://github.com/meabs/mcp-app-ui-bank.git"
   },
   "keywords": [
     "mcp",
@@ -27,9 +27,9 @@
   "license": "MIT",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/meabs/mcp-app-demo/issues"
+    "url": "https://github.com/meabs/mcp-app-ui-bank/issues"
   },
-  "homepage": "https://github.com/meabs/mcp-app-demo#readme",
+  "homepage": "https://github.com/meabs/mcp-app-ui-bank#readme",
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
