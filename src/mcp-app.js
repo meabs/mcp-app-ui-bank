@@ -66,6 +66,7 @@ const state = {
   applicantName: "Alex",
   offerActivationFeedback: null,
   activeSpendCategory: null,
+  activity: [],
   lastModelContext: null,
 };
 
@@ -301,6 +302,21 @@ function viewLabelForMode(mode) {
   return labels[mode] ?? "Card Services";
 }
 
+function logActivity(label, detail = "") {
+  if (!label) return;
+  const key = `${label}:${detail}`;
+  if (state.activity[0]?.key === key) return;
+  state.activity = [
+    {
+      key,
+      label,
+      detail,
+      at: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+    },
+    ...state.activity.filter((item) => item.key !== key),
+  ].slice(0, 5);
+}
+
 function renderContextHeader() {
   const card = getSelectedCard();
   if (contextViewLabel) contextViewLabel.textContent = viewLabelForMode(state.mode);
@@ -378,6 +394,7 @@ async function resetDemoSession(destination = "hub") {
   state.balanceTransfer = null;
   state.activeSpendCategory = null;
   state.offerActivationFeedback = null;
+  state.activity = [];
   state.lastModelContext = null;
   document.getElementById("full-journey-section")?.classList.add("hidden");
   renderModelContextPanel();
@@ -638,11 +655,14 @@ function handleToolResult(result) {
   if (payload.kind === "card-selected") {
     if (payload.selectedCardId) state.selectedCardId = payload.selectedCardId;
     if (payload.recommendations) state.recommendations = payload.recommendations;
+    const card = state.recommendations?.cards?.find((item) => item.id === payload.selectedCardId);
+    logActivity("Card selected", card?.name ?? "Product detail updated");
     render();
     return true;
   }
   if (payload.kind === "compare-basket") {
     state.compareIds = payload.compareIds ?? state.compareIds;
+    logActivity("Compare basket updated", `${state.compareIds.length} card${state.compareIds.length === 1 ? "" : "s"} selected`);
     render();
     return true;
   }
@@ -650,6 +670,7 @@ function handleToolResult(result) {
     state.submitted = true;
     state.underwritingStatus = payload.underwritingStatus ?? "reviewing";
     state.applicantName = payload.applicantName ?? state.applicantName;
+    logActivity("Application submitted", "Decision review started");
     features?.beginAsyncUnderwriting();
     render();
     return true;
@@ -665,6 +686,7 @@ function handleToolResult(result) {
   if (payload.kind === "underwriting-complete") {
     state.underwritingStatus = "complete";
     state.underwritingDecision = payload;
+    logActivity("Decision ready", payload.status === "approved" ? "Application approved" : "Application referred");
     features?.notifyUnderwritingDecision(payload);
     renderJourneyPhase();
     return true;
@@ -673,9 +695,16 @@ function handleToolResult(result) {
     if (payload.offers) state.merchantOffers = payload;
     if (payload.kind === "offer-activated") {
       state.offerActivationFeedback = payload.activationCopy ?? payload.message ?? "Offer activated";
+      logActivity("Offer activated", state.offerActivationFeedback);
     }
-    if (payload.reference) state.travelNotice = payload;
-    if (payload.status === "provisioned") state.wallet = payload;
+    if (payload.reference) {
+      state.travelNotice = payload;
+      logActivity("Travel notice registered", `Reference ${payload.reference}`);
+    }
+    if (payload.status === "provisioned") {
+      state.wallet = payload;
+      logActivity("Wallet updated", payload.message ?? "Card added to wallet");
+    }
     render();
     return true;
   }
@@ -695,6 +724,7 @@ function handleToolResult(result) {
     state.underwritingDecision = null;
     state.activeSpendCategory = null;
     state.productTab = "cards";
+    logActivity("Products loaded", `${payload.recommendations?.cards?.length ?? 0} cards available`);
     features?.tryResumeDraft();
   }
 
@@ -702,11 +732,13 @@ function handleToolResult(result) {
     state.recommendations = payload;
     state.selectedCardId = payload.selectedCardId ?? payload.cards?.[0]?.id ?? state.selectedCardId;
     state.productTab = "cards";
+    logActivity("Products loaded", `${payload.cards?.length ?? 0} cards available`);
   }
 
   if (payload.kind === "card-comparison") {
     state.comparison = payload;
     state.compareIds = payload.cardIds ?? [];
+    logActivity("Comparison ready", `${state.compareIds.length || payload.cards?.length || 0} cards compared`);
   }
 
   if (payload.kind === "rewards-calculator") state.calculator = payload;
@@ -715,14 +747,28 @@ function handleToolResult(result) {
   if (payload.kind === "spend-insights") {
     state.spendInsights = payload;
     state.activeSpendCategory = null;
+    logActivity("Spend insights viewed", payload.period ?? "Latest spending");
   }
-  if (payload.kind === "merchant-offers") state.merchantOffers = payload;
-  if (payload.kind === "travel-notice") state.travelNotice = payload;
-  if (payload.kind === "credit-limit-offer") state.creditLimit = payload;
-  if (payload.kind === "wallet-provision" || payload.kind === "wallet-provisioned") state.wallet = payload;
+  if (payload.kind === "merchant-offers") {
+    state.merchantOffers = payload;
+    logActivity("Offers viewed", `${payload.offers?.length ?? 0} offers available`);
+  }
+  if (payload.kind === "travel-notice") {
+    state.travelNotice = payload;
+    logActivity("Travel notice started", `Card ending ${payload.cardLastFour ?? "4821"}`);
+  }
+  if (payload.kind === "credit-limit-offer") {
+    state.creditLimit = payload;
+    logActivity("Card controls viewed", `Indicative increase ${payload.indicativeIncrease ?? ""}`.trim());
+  }
+  if (payload.kind === "wallet-provision" || payload.kind === "wallet-provisioned") {
+    state.wallet = payload;
+    logActivity("Wallet viewed", payload.cardName ?? "Digital wallet");
+  }
 
   if (payload.kind === "eligibility-check") {
     state.eligibility = payload;
+    logActivity("Eligibility checked", payload.decision === "pre-qualified" ? "Likely eligible" : "Review needed");
   }
 
   if (payload.kind === "application-journey") {
@@ -734,6 +780,7 @@ function handleToolResult(result) {
       state.journeyPhase = "application";
       state.showJourney = true;
     }
+    logActivity("Application started", payload.card?.name ?? "Card application");
   }
 
   const incomingMode = payload.mode;

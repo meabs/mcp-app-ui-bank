@@ -74,6 +74,126 @@ export function createFeatureViews(ctx) {
     return map[hubId] ?? null;
   }
 
+  function buildNextActions() {
+    const actions = [];
+    const hasProducts = Boolean(state.recommendations?.cards?.length);
+    const hasComparison = Boolean(state.comparison?.cards?.length);
+    const inactiveOffers = state.merchantOffers?.offers?.filter((offer) => !offer.activated).length ?? null;
+    const travelSpend = state.spendInsights?.categories?.find((category) => category.id === "travel")?.amount ?? 0;
+    const walletReady = state.wallet && state.wallet.status !== "provisioned";
+    const walletDone = state.wallet?.status === "provisioned";
+    const eligibilityReady = state.eligibility?.decision === "pre-qualified";
+
+    if (!hasProducts) {
+      actions.push({
+        id: "products",
+        hubId: "products",
+        label: "Review card options",
+        detail: "Start with products, compare, and eligibility.",
+      });
+    }
+
+    if (hasProducts && !hasComparison) {
+      actions.push({
+        id: "compare",
+        hubId: "products",
+        tab: "compare",
+        label: "Compare best fits",
+        detail: "See travel, everyday, and credit-building picks side by side.",
+      });
+    }
+
+    if (state.spendInsights && travelSpend >= 200 && !state.travelNotice?.reference) {
+      actions.push({
+        id: "travel",
+        hubId: "travel",
+        label: "Register travel plans",
+        detail: `Travel spend is £${travelSpend}; reduce card declines before a trip.`,
+      });
+    }
+
+    if (inactiveOffers && inactiveOffers > 0) {
+      actions.push({
+        id: "offers",
+        hubId: "merchant-offers",
+        label: "Activate available offers",
+        detail: `${inactiveOffers} partner offer${inactiveOffers === 1 ? "" : "s"} still available.`,
+      });
+    }
+
+    if (eligibilityReady && !walletDone) {
+      actions.push({
+        id: "wallet",
+        hubId: "wallet",
+        label: walletReady ? "Add card to wallet" : "Prepare wallet setup",
+        detail: "Move from approval to usable card controls.",
+      });
+    }
+
+    if (!state.spendInsights) {
+      actions.push({
+        id: "spend",
+        hubId: "spend-insights",
+        label: "Check spend insights",
+        detail: "Use spending categories to guide the next product action.",
+      });
+    }
+
+    if (!state.creditLimit) {
+      actions.push({
+        id: "controls",
+        hubId: "card-controls",
+        label: "Review card controls",
+        detail: "Check limit options and wallet shortcuts.",
+      });
+    }
+
+    return actions.slice(0, 3);
+  }
+
+  function renderAdaptiveDashboard() {
+    const actions = buildNextActions();
+    const activity = state.activity ?? [];
+    if (!actions.length && !activity.length) return "";
+    return `
+      <section class="adaptive-dashboard" aria-label="Suggested next steps">
+        ${actions.length ? `
+          <div class="adaptive-section">
+            <div class="section-kicker">Next best actions</div>
+            <div class="next-action-grid">
+              ${actions.map((action) => `
+                <button type="button" class="next-action-card" data-next-hub="${action.hubId}" data-next-tab="${action.tab ?? ""}">
+                  <strong>${action.label}</strong>
+                  <span>${action.detail}</span>
+                </button>`).join("")}
+            </div>
+          </div>` : ""}
+        ${activity.length ? `
+          <div class="adaptive-section">
+            <div class="section-kicker">Recent activity</div>
+            <ol class="activity-timeline">
+              ${activity.map((item) => `
+                <li>
+                  <time>${item.at}</time>
+                  <div><strong>${item.label}</strong>${item.detail ? `<span>${item.detail}</span>` : ""}</div>
+                </li>`).join("")}
+            </ol>
+          </div>` : ""}
+      </section>`;
+  }
+
+  async function navigateHubTarget(hubId, tab = "") {
+    const result = await callServerTool("blackwell-navigate-hub", { hubId });
+    if (!result) {
+      const payload = localHubPayload(hubId);
+      if (payload) handleToolResult?.({ structuredContent: payload });
+    }
+    if (tab && hubId === "products") {
+      state.productTab = tab;
+      ctx.render();
+    }
+  }
+
   function loadDraftFromStorage() {
     try {
       const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
@@ -501,6 +621,7 @@ export function createFeatureViews(ctx) {
     el.innerHTML = `
       <h2 style="margin:0 0 12px;font-size:1rem;">${state.hub.headline}</h2>
       ${state.hub.subtitle ? `<p class="hub-subtitle">${state.hub.subtitle}</p>` : ""}
+      ${renderAdaptiveDashboard()}
       <div class="hub-grid">${state.hub.tiles.map((t) => `
         <button type="button" class="hub-tile" data-hub-id="${t.id}">
           <div class="hub-tile-icon" aria-hidden="true">${t.icon}</div>
@@ -508,13 +629,11 @@ export function createFeatureViews(ctx) {
           <p>${t.description}</p>
         </button>`).join("")}</div>`;
     el.innerHTML = el.innerHTML.replace(/motion\.div>/, "div>");
+    el.querySelectorAll("[data-next-hub]").forEach((button) => {
+      button.addEventListener("click", () => navigateHubTarget(button.dataset.nextHub, button.dataset.nextTab));
+    });
     el.querySelectorAll(".hub-tile").forEach((tile) => {
-      tile.addEventListener("click", async () => {
-        const result = await callServerTool("blackwell-navigate-hub", { hubId: tile.dataset.hubId });
-        if (result) return;
-        const payload = localHubPayload(tile.dataset.hubId);
-        if (payload) handleToolResult?.({ structuredContent: payload });
-      });
+      tile.addEventListener("click", () => navigateHubTarget(tile.dataset.hubId));
     });
     notifyHostSize();
   }
@@ -737,7 +856,10 @@ export function createFeatureViews(ctx) {
       <p style="font-size:0.9rem;margin:12px 0;">You may be eligible for an indicative increase of <strong>${data.indicativeIncrease}</strong> (new limit ${data.newLimit}).</p>
       <button type="button" class="btn-secondary" data-nav="wallet">Add to Apple Pay</button>
       <p class="disclaimer-text">${data.disclaimer}</p>`;
-    el.querySelector("[data-nav='wallet']")?.addEventListener("click", () => callServerTool("blackwell-wallet-provision", { cardId: "blackwell-rewards" }));
+    el.querySelector("[data-nav='wallet']")?.addEventListener("click", async () => {
+      const result = await callServerTool("blackwell-wallet-provision", { cardId: "blackwell-rewards" });
+      if (!result) handleToolResult?.({ structuredContent: getWalletProvisioning?.("blackwell-rewards") });
+    });
     notifyHostSize();
   }
 

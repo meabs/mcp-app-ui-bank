@@ -1299,6 +1299,99 @@
   color: var(--bw-muted);
 }
 
+.adaptive-dashboard {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.adaptive-section {
+  border: 1px solid var(--bw-sage-border);
+  border-radius: var(--bw-radius-sm);
+  background: var(--bw-sage-bg);
+  padding: 12px;
+}
+
+.section-kicker {
+  color: var(--bw-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.next-action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.next-action-card {
+  border: 1px solid var(--bw-sage-border);
+  border-radius: var(--bw-radius-sm);
+  background: var(--bw-white);
+  color: var(--bw-text);
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  min-height: 86px;
+  padding: 10px;
+  text-align: left;
+}
+
+.next-action-card:hover {
+  border-color: var(--bw-fern);
+  box-shadow: 0 4px 12px rgba(13, 43, 30, 0.08);
+}
+
+.next-action-card strong {
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.next-action-card span {
+  color: var(--bw-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.activity-timeline {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.activity-timeline li {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.activity-timeline time {
+  color: var(--bw-muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.activity-timeline strong,
+.activity-timeline span {
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.activity-timeline strong {
+  color: var(--bw-text);
+}
+
+.activity-timeline span {
+  color: var(--bw-muted);
+}
+
 .hero-strip {
   border: 1px solid var(--bw-sage-border);
   border-radius: var(--bw-radius-sm);
@@ -1835,6 +1928,7 @@
     max-width: 220px;
   }
   .hub-grid { grid-template-columns: 1fr; }
+  .next-action-grid { grid-template-columns: 1fr; }
   .compare-summary-grid { grid-template-columns: 1fr; }
   .offer-card,
   .eligibility-success-box,
