@@ -88,6 +88,7 @@ export function createFeatureViews(ctx) {
       actions.push({
         id: "products",
         hubId: "products",
+        status: "New",
         label: "Review card options",
         detail: "Start with products, compare, and eligibility.",
       });
@@ -98,6 +99,7 @@ export function createFeatureViews(ctx) {
         id: "compare",
         hubId: "products",
         tab: "compare",
+        status: "Recommended",
         label: "Compare best fits",
         detail: "See travel, everyday, and credit-building picks side by side.",
       });
@@ -107,6 +109,7 @@ export function createFeatureViews(ctx) {
       actions.push({
         id: "travel",
         hubId: "travel",
+        status: "Travel",
         label: "Register travel plans",
         detail: `Travel spend is £${travelSpend}; reduce card declines before a trip.`,
       });
@@ -116,6 +119,7 @@ export function createFeatureViews(ctx) {
       actions.push({
         id: "offers",
         hubId: "merchant-offers",
+        status: "Ready",
         label: "Activate available offers",
         detail: `${inactiveOffers} partner offer${inactiveOffers === 1 ? "" : "s"} still available.`,
       });
@@ -125,6 +129,7 @@ export function createFeatureViews(ctx) {
       actions.push({
         id: "wallet",
         hubId: "wallet",
+        status: walletReady ? "Ready" : "Next",
         label: walletReady ? "Add card to wallet" : "Prepare wallet setup",
         detail: "Move from approval to usable card controls.",
       });
@@ -134,6 +139,7 @@ export function createFeatureViews(ctx) {
       actions.push({
         id: "spend",
         hubId: "spend-insights",
+        status: "Insight",
         label: "Check spend insights",
         detail: "Use spending categories to guide the next product action.",
       });
@@ -143,6 +149,7 @@ export function createFeatureViews(ctx) {
       actions.push({
         id: "controls",
         hubId: "card-controls",
+        status: "Controls",
         label: "Review card controls",
         detail: "Check limit options and wallet shortcuts.",
       });
@@ -163,6 +170,7 @@ export function createFeatureViews(ctx) {
             <div class="next-action-grid">
               ${actions.map((action) => `
                 <button type="button" class="next-action-card" data-next-hub="${action.hubId}" data-next-tab="${action.tab ?? ""}">
+                  <em>${action.status}</em>
                   <strong>${action.label}</strong>
                   <span>${action.detail}</span>
                 </button>`).join("")}
